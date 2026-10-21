@@ -503,3 +503,23 @@ test afectado con `--repeats 20`, suite completa **50/50**, lint, format:check y
 build aprobados. El bundle conserva el mismo hash. Solo cambian el test y este
 registro; no se ejecutó holdout ni LLM y no hubo push. `skills-lock.json` continúa
 sin seguimiento. El resultado del siguiente CI remoto requiere su propia ejecución.
+
+## Seed opcional para probar análisis desde la UI
+
+Solicitud posterior a Fase 8: cargar contexto y correos ficticios nuevos, sin
+análisis o alertas preparados. CLI seed_demo exige --confirm-demo y un ADMIN activo
+existente. Reutiliza los servicios de contexto/ingestión y su auditoría. No crea
+usuarios ni sobrescribe registros existentes; Message-ID e identidades son estables.
+
+**477 pruebas backend aprobadas** en PostgreSQL 18, incluidas siete nuevas sobre
+carga auditada, ausencia de análisis/alertas, idempotencia que preserva ediciones y
+análisis previos, permisos y confirmación anterior al acceso DB. Ruff check y format
+--check aprobados, 107 archivos. Sin nuevas dependencias, modelos o migraciones.
+
+Backend reconstruido y cuatro servicios healthy. Carga local solicitada: dos
+ejecutivos, dos proveedores y doce emails; segunda ejecución crea cero registros.
+Verificación posterior: doce emails demo, cero análisis y doce EMAIL_INGESTED.
+Google configurado en .env local con gemini-3.5-flash-lite elegido por el usuario;
+key preservada sin imprimirla y archivo 0600. No se llamó al LLM durante pruebas o
+carga; el usuario inicia el consumo desde Analizar correo. No se lee el corpus ni
+se ejecuta holdout, y no cambian políticas del detector. [Guía demo](demo.md).

@@ -52,6 +52,7 @@ Documentación:
 - [Motor BEC, reglas, LangChain, scoring y ERROR/retry](docs/bec-analysis.md)
 - [Alertas, API de automatización y orquestación](docs/alerts-and-orchestration.md)
 - [Frontend, sesión y revisión humana](docs/frontend.md)
+- [Seed opcional para probar análisis con correos ficticios](docs/demo.md)
 - [Evaluación formal y resultado congelado](docs/evaluation.md)
 - [Reportes operativos PDF/Excel](docs/reporting.md)
 - [Workflow n8n: importar, publicar y probar](n8n/README.md)
