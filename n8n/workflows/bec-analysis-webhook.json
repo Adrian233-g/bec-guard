@@ -33,7 +33,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        220,
+        440,
         0
       ],
       "parameters": {
@@ -47,7 +47,8 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "includeOtherFields": true
       }
     },
     {
@@ -66,7 +67,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ $('Webhook').item.json.body }}",
+        "jsonBody": "={{ $('Configuration').item.json.email }}",
         "options": {
           "response": {
             "response": {
@@ -325,8 +326,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1600,
-        0
+        1800,
+        -100
       ],
       "parameters": {
         "respondWith": "json",
@@ -335,6 +336,90 @@
           "responseCode": "={{ $json.route === 'ERROR' ? ($json.error_code === 'LLM_NOT_CONFIGURED' ? 503 : 502) : 200 }}"
         }
       }
+    },
+    {
+      "id": "imap-trigger",
+      "name": "Email Trigger (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "nothing",
+        "format": "resolved",
+        "dataPropertyAttachmentsPrefixName": "attachment_",
+        "options": {
+          "customEmailConfig": "[\"ALL\"]",
+          "trackLastMessageId": true
+        }
+      },
+      "disabled": true
+    },
+    {
+      "id": "normalize-imap",
+      "name": "Normalize IMAP",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const mail = $json;\nconst values = (field) => {\n  if (!field) return [];\n  const entries = Array.isArray(field) ? field : [field];\n  return entries.flatMap(entry => Array.isArray(entry?.value) ? entry.value : []);\n};\nconst from = values(mail.from);\nif (from.length !== 1 || !from[0].address) throw new Error('IMAP_INVALID_FROM');\nconst reply = values(mail.replyTo);\nif (reply.length > 1) throw new Error('IMAP_MULTIPLE_REPLY_TO');\nif (typeof mail.text !== 'string' && mail.html) throw new Error('IMAP_MISSING_TEXT');\nconst header = (name) => {\n  const line = mail.headers?.[name];\n  if (typeof line !== 'string') return null;\n  return line.replace(new RegExp('^' + name + ':\\s*', 'i'), '').trim() || null;\n};\nconst returnPath = header('return-path');\nconst returnMatch = returnPath?.match(/^<?([^<>\\s]+@[^<>\\s]+)>?$/);\nconst date = mail.date && !Number.isNaN(Date.parse(mail.date)) ? new Date(mail.date) : new Date();\nif (!mail.messageId) throw new Error('IMAP_MISSING_MESSAGE_ID');\nreturn { json: { source: 'imap', email: {\n  message_id: mail.messageId,\n  thread_id: null,\n  sender_name: from[0].name || null,\n  sender_email: from[0].address,\n  reply_to: reply[0]?.address || null,\n  return_path: returnMatch?.[1] || null,\n  to_recipients: values(mail.to).map(entry => entry.address),\n  cc_recipients: values(mail.cc).map(entry => entry.address),\n  subject: mail.subject || '',\n  body_text: mail.text || '',\n  authentication_results: header('authentication-results'),\n  received_at: date.toISOString(),\n} } };"
+      }
+    },
+    {
+      "id": "prepare-webhook",
+      "name": "Prepare webhook",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ source: 'webhook', email: $json.body }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "is-webhook",
+      "name": "Respond to webhook?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1580,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "condition",
+              "leftValue": "={{ $('Configuration').item.json.source === 'webhook' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -342,7 +427,7 @@
       "main": [
         [
           {
-            "node": "Configuration",
+            "node": "Prepare webhook",
             "type": "main",
             "index": 0
           }
@@ -436,7 +521,7 @@
       "main": [
         [
           {
-            "node": "Respond",
+            "node": "Respond to webhook?",
             "type": "main",
             "index": 0
           }
@@ -447,7 +532,7 @@
       "main": [
         [
           {
-            "node": "Respond",
+            "node": "Respond to webhook?",
             "type": "main",
             "index": 0
           }
@@ -458,7 +543,7 @@
       "main": [
         [
           {
-            "node": "Respond",
+            "node": "Respond to webhook?",
             "type": "main",
             "index": 0
           }
@@ -469,7 +554,52 @@
       "main": [
         [
           {
+            "node": "Respond to webhook?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare webhook": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to webhook?": {
+      "main": [
+        [
+          {
             "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Normalize IMAP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize IMAP": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
             "type": "main",
             "index": 0
           }

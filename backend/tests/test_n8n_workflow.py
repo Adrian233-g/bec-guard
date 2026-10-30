@@ -11,7 +11,16 @@ def test_workflow_is_native_importable_and_inactive():
     types = {node["type"] for node in nodes.values()}
     assert types == {
         f"n8n-nodes-base.{kind}"
-        for kind in ["webhook", "httpRequest", "if", "switch", "set", "respondToWebhook"]
+        for kind in [
+            "webhook",
+            "httpRequest",
+            "if",
+            "switch",
+            "set",
+            "respondToWebhook",
+            "emailReadImap",
+            "code",
+        ]
     }
     assert nodes["Webhook"]["parameters"]["path"] == "bec-guard/analyze"
     assert nodes["Webhook"]["parameters"]["authentication"] == "headerAuth"
@@ -46,7 +55,7 @@ def test_routing_is_fail_closed_and_response_excludes_email_content():
         response = nodes[name]["parameters"]["jsonOutput"]
         assert "body_text" not in response and "sender_email" not in response
         assert "subject" not in response and "credentials" not in response
-        assert workflow["connections"][name]["main"][0][0]["node"] == "Respond"
+        assert workflow["connections"][name]["main"][0][0]["node"] == "Respond to webhook?"
 
 
 def test_workflow_has_no_secrets_or_saved_execution_data():
@@ -66,3 +75,21 @@ def test_workflow_has_no_secrets_or_saved_execution_data():
         "saveManualExecutions": False,
         "saveExecutionProgress": False,
     }
+
+
+def test_both_inputs_use_common_pipeline_and_only_webhook_receives_response():
+    workflow = json.loads(WORKFLOW.read_text())
+    nodes = {node["name"]: node for node in workflow["nodes"]}
+    connections = workflow["connections"]
+    assert connections["Webhook"]["main"][0][0]["node"] == "Prepare webhook"
+    assert connections["Email Trigger (IMAP)"]["main"][0][0]["node"] == "Normalize IMAP"
+    for name in ["Prepare webhook", "Normalize IMAP"]:
+        assert connections[name]["main"][0][0]["node"] == "Configuration"
+    assert nodes["Configuration"]["parameters"]["includeOtherFields"] is True
+    assert "Configuration" in nodes["Ingest email"]["parameters"]["jsonBody"]
+    assert (
+        "source === 'webhook'"
+        in nodes["Respond to webhook?"]["parameters"]["conditions"]["conditions"][0]["leftValue"]
+    )
+    assert connections["Respond to webhook?"]["main"][0][0]["node"] == "Respond"
+    assert connections["Respond to webhook?"]["main"][1] == []

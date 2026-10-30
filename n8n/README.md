@@ -1,9 +1,9 @@
 # Orquestación BEC Guard — n8n 2.44.4
 
-`workflows/bec-analysis-webhook.json` recibe un EmailIngestRequest normalizado:
-Webhook → configuración → ingestión idempotente FastAPI → análisis FastAPI →
-Switch → respuesta ALERT / NO_ALERT / ERROR. No calcula scoring ni determina
-política de alertas. No usa Code, Gmail, IMAP, SMTP ni notificaciones.
+`workflows/bec-analysis-webhook.json` permite dos entradas: un webhook con
+EmailIngestRequest normalizado y un Email Trigger (IMAP) desactivado inicialmente. Ambas
+comparten ingestión idempotente, análisis FastAPI y enrutamiento ALERT / NO_ALERT /
+ERROR. Solo el webhook recibe respuesta HTTP. No hay SMTP ni notificaciones.
 
 ## Configurar e importar
 
@@ -119,6 +119,47 @@ Referencias: [ejecuciones](https://docs.n8n.io/hosting/configuration/environment
 ## Alcance
 
 Compose sigue siendo local, con puertos en loopback. El Webhook permite demostrar
-orquestación sin una cuenta de correo externa. Gmail/IMAP/Graph, notificaciones,
-frontend e HITL requieren fases posteriores. ALERT/NO_ALERT se prueban con fakes
-backend; la validación local sin LLM usa ERROR LLM_NOT_CONFIGURED sin gastar tokens.
+orquestación sin una cuenta de correo externa. La entrada IMAP descrita abajo requiere credencial y activación; Graph y
+notificaciones siguen pendientes. El frontend y la revisión humana ya existen.
+ALERT/NO_ALERT se prueban con fakes backend; la validación local sin LLM usa ERROR LLM_NOT_CONFIGURED sin gastar tokens.
+
+## Gmail por IMAP: recepción de correos
+
+El mismo [`bec-analysis-webhook.json`](workflows/bec-analysis-webhook.json) incluye
+un **Email Trigger (IMAP)** desactivado por defecto. Usa una conexión IMAP a la
+bandeja INBOX y envía el correo al flujo de análisis existente. No modifica el
+estado leído del mensaje. El código versionado no contiene credenciales.
+
+### Conectar la cuenta
+
+1. Mantén `AUTOMATION_API_KEY` y el proveedor, modelo y clave de IA configurados
+   en el backend. Configura Groq en `.env` y recrea el backend para aplicar cambios.
+2. Activa la verificación en dos pasos de tu cuenta de Google y crea una
+   [contraseña de aplicación](https://myaccount.google.com/apppasswords). Algunas
+   cuentas de universidad o trabajo no permiten esta opción. No compartas la clave.
+3. En n8n, abre el workflow existente y el nodo **Email Trigger (IMAP)**. Crea una
+   credencial IMAP con usuario igual a tu Gmail, la contraseña de aplicación,
+   host `imap.gmail.com`, puerto `993` y SSL/TLS habilitado. Guarda la credencial.
+4. Habilita el nodo IMAP, guarda y publica el workflow. Envía un correo de prueba
+   desde otra cuenta y consulta **Correos** y **Alertas** en la aplicación.
+   Registra tus ejecutivos y proveedores antes de probar la detección contextual.
+
+El nodo tiene habilitado el seguimiento por UID y pide correos leídos y no leídos.
+En la primera activación, la versión instalada de n8n puede incluir mensajes del
+mismo día al recibir el primer correo; esto puede consumir llamadas a IA. Para
+una demo predecible usa un buzón de prueba sin otros mensajes de ese día. La
+recuperación después de desconexiones no garantiza entrega ni reintento completo.
+Si el nodo no logra normalizar o guardar un correo, permanece en Gmail pero no se
+registra automáticamente en BEC Guard. No se reintentan de forma automática los
+análisis fallidos; un error del proveedor deja el correo y el análisis ERROR y se
+puede reintentar desde su detalle en la aplicación.
+
+Se guarda Message-ID para evitar duplicados; los correos sin Message-ID se rechazan
+para no confundir mensajes de cuentas distintas. El nodo no reconstruye el hilo.
+La fecha usada es la cabecera Date del mensaje; si falta o es inválida, se usa la
+hora de procesamiento, no necesariamente la fecha real de recepción. El formato
+Resolved de n8n descarga los adjuntos temporalmente como datos binarios para
+interpretar el correo; la normalización no los envía al backend ni los analiza.
+Las ejecuciones terminadas no conservan su contenido según la política de privacidad
+configurada arriba. Cada correo enviado al análisis comparte su texto con el
+proveedor de IA elegido. No se envían avisos por correo automáticamente.

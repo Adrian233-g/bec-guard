@@ -12,7 +12,7 @@ atómica, parser MIME y dataset sintético.
 La aplicación React permite login, dashboard, cola, evidencia, revisión humana,
 correos, contexto y auditoría por rol.
 Se ingieren, consultan y analizan correos; HIGH/CRITICAL crean alertas OPEN.
-n8n orquesta el flujo mediante un webhook autenticado, sin proveedor de correo real.
+n8n dispone de un workflow común con entrada por webhook e IMAP para Gmail; IMAP requiere una credencial en n8n.
 La evaluación académica del holdout quedó separada y congelada antes de una única
 ejecución determinista. Los reportes PDF/Excel consultan datos operativos de
 PostgreSQL y se descargan desde la aplicación con autorización por rol.
@@ -293,7 +293,7 @@ n8n usa exclusivamente POST /api/automation/emails (Message-ID idempotente) y
 POST /api/automation/emails/{id}/analyze (analysis + alert_id). Esa key no accede
 a los endpoints humanos. El POST humano conserva 409 en duplicados. Se desactiva
 el guardado de ejecuciones n8n y se borran sus registros temporales mediante
-pruning; ver detalles y límites en la guía. No hay Gmail/IMAP ni notificaciones.
+pruning; ver detalles y límites en la guía. La entrada IMAP requiere una credencial y activación manual; no hay notificaciones.
 
 Regresión de desarrollo desde backend/, sin proveedor ni BD:
 
@@ -407,9 +407,9 @@ referencias bancarias. ANALYST no tiene acceso. Ver [alcance y privacidad](docs/
 ## Pendiente tras Fase 8
 
 Fase 6 añade BECAlert automática, lectura de alertas, API key acotada y workflow
-Webhook n8n. Fase 7 añade frontend funcional e HITL. Quedan pendientes CRUD de usuarios,
-recuperación, refresh tokens, conectores de email y notificaciones.
-También quedan fuera Gmail, IMAP y Microsoft Graph.
+Webhook n8n. Fase 7 añade frontend funcional e HITL. Quedan pendientes CRUD de usuarios, recuperación, refresh tokens y notificaciones.
+Gmail puede conectarse por IMAP con contraseña de aplicación; Microsoft Graph
+no está integrado.
 
 Las APIs de contexto ofrecen GET/POST/PATCH; ADMIN/MANAGER escriben. Emails ofrecen
 POST/GET, con ingestión también para ANALYST. Todos los roles leen; no hay DELETE.
