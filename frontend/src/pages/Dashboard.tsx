@@ -8,6 +8,7 @@ import {
   date,
   label,
 } from '../components';
+import { IconArrowRight } from '../icons';
 import type { AlertSummary, Dashboard as DashboardData } from '../types';
 import { ALERT_THRESHOLD } from '../analysis';
 import { useResource } from '../useResource';
@@ -41,10 +42,17 @@ function DashboardContent({ data }: { data: DashboardData }) {
   return (
     <>
       <section className="workload">
-        <div>
+        <div className="workload-summary">
+          <div className="workload-badge">
+            <span className="workload-badge-dot" aria-hidden="true" />
+            <span>Guardia de triaje</span>
+          </div>
           <span>Alertas pendientes</span>
           <strong>{data.alerts.open + data.alerts.under_review}</strong>
-          <Link to="/alerts?status=OPEN">Abrir cola de revisión</Link>
+          <Link to="/alerts?status=OPEN">
+            <span>Abrir cola de revisión</span>
+            <IconArrowRight aria-hidden="true" />
+          </Link>
         </div>
         <dl>
           <div>

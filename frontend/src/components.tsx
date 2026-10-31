@@ -37,7 +37,10 @@ export const date = (value: string | null | undefined) =>
     : '—';
 export function Badge({ value }: { value: string | null | undefined }) {
   return value ? (
-    <span className={`badge badge-${value.toLowerCase()}`}>{label(value)}</span>
+    <span className={`badge badge-${value.toLowerCase()}`}>
+      <span className="badge-dot" aria-hidden="true" />
+      {label(value)}
+    </span>
   ) : (
     <span>—</span>
   );
