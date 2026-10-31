@@ -80,18 +80,18 @@ Una cuenta conserva **un único rol**, pero ser ADMIN o ANALYST no impide ser du
 de un buzón. Los permisos de propietario y los permisos para investigar alertas se
 combinan sin conceder acceso a otros correos normales.
 
-## Estado local tras la limpieza
+## Estado local tras la limpieza y actualización
 
 - El usuario decidió empezar sin los correos de prueba. Se eliminaron los 16
   correos existentes y sus 5 análisis; no había alertas. Se conservaron los
   dos usuarios, ejecutivos, proveedores y la bitácora, así como el historial de
   ejecuciones de n8n.
-- La base local sigue en `0009_roles_employee`; las migraciones posteriores aún
-  no se han aplicado. Como ahora no hay correos históricos, no necesitan una
-  asignación de propietario, siempre que no entren mensajes antes de migrar.
-- El workflow IMAP anterior sigue publicado. Mientras esté activo y Docker esté
-  encendido, puede recibir nuevos correos; coordinar su transición antes de crear
-  el receptor individual del mismo Gmail para no duplicar la recepción.
+- La base local se migró hasta `0012_mailbox_connection_progress` sin correos
+  históricos. Hay dos usuarios activos y todavía no hay buzones registrados.
+- El workflow IMAP anterior se despublicó para evitar receptores duplicados.
+  Los servicios actualizados están sanos; se comprobó el acceso de lectura desde
+  el backend a la API de n8n con la llave configurada. Falta conectar el Gmail
+  desde la sesión del empleado y probar el flujo real.
 
 ## Estado real al comenzar
 
@@ -112,8 +112,9 @@ combinan sin conceder acceso a otros correos normales.
       un correo recibido con Docker apagado y el funcionamiento con varios buzones.
 - [x] Rol EMPLOYEE con acceso provisional restringido hasta implementar propiedad.
 - [x] Gestión de usuarios por ADMIN y cambio de contraseña por cada usuario en el
-      código; reconstruir los contenedores locales para usar esta funcionalidad.
-- [x] Permisos por dueño de buzón y aislamiento multiusuario implementados en código (revisiones 0010 y 0011; aún no aplicadas a la base local).
+      código y contenedores locales actualizados.
+- [x] Permisos por dueño de buzón y aislamiento multiusuario implementados;
+      las revisiones 0010 y 0011 ya se aplicaron a la base local.
 - [x] Asociación explícita usuario → buzón → correo con unicidad (mailbox_id, message_id).
 - [ ] Conexión individual de Gmail desde la aplicación y múltiples receptores.
 - [ ] Notificaciones automáticas a empleados/seguridad: la cola en la app no es
@@ -151,7 +152,8 @@ usar SQL manual, y los permisos de cada rol se verifican en el servidor.
 - [x] Restringir la automatización actual a un único buzón configurado en el servidor.
       Las credenciales independientes para varios conectores están implementadas en código.
 - [x] Diseñar una migración que exige confirmar explícitamente el dueño y dirección
-      de los correos anteriores, sin inventarlos. La base local se limpió; si entran nuevos correos antes de migrar, hay que confirmar su dueño.
+      de los correos anteriores, sin inventarlos. La base local se limpió y migró
+      sin correos anteriores; otras instalaciones deben confirmar su propiedad.
 - [x] Probar al menos dos empleados con buzones distintos, el mismo Message-ID en
       ambos y acceso cruzado denegado; verificar la excepción para alertas reales.
 
