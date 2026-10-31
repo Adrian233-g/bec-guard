@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import {
   BrowserRouter,
   Link,
@@ -23,6 +23,19 @@ import { AlertDetail } from './pages/AlertDetail';
 import { AuthProvider, useAuth } from './auth';
 import { ErrorState, LoadingState, label } from './components';
 import { NotificationBell } from './NotificationBell';
+import {
+  IconAccount,
+  IconAlerts,
+  IconAudit,
+  IconDashboard,
+  IconExecutive,
+  IconLogOut,
+  IconMail,
+  IconReports,
+  IconShield,
+  IconUsers,
+  IconVendor,
+} from './icons';
 
 function Login() {
   const { user, login } = useAuth();
@@ -60,9 +73,9 @@ function Login() {
       <section className="login-intro">
         <Link className="brand" to="/login">
           <span className="brand-mark" aria-hidden="true">
-            B
+            <IconShield width="20" height="20" />
           </span>
-          BEC Guard
+          <span>BEC Guard</span>
         </Link>
         <h1>
           Una decisión informada.
@@ -70,7 +83,7 @@ function Login() {
           Una amenaza contenida.
         </h1>
         <p>Revisa señales de fraude empresarial y documenta cada decisión.</p>
-        <div className="login-rule">Detección explicable. Revisión humana.</div>
+        <div className="login-rule">Detección explicable · Revisión humana</div>
       </section>
       <section className="login-form">
         <form onSubmit={(e) => void submit(e)}>
@@ -141,6 +154,19 @@ function Shell() {
     items.push(['/users', 'Usuarios']);
   }
   items.push(['/account', 'Mi cuenta']);
+
+  const iconMap: Record<string, ReactNode> = {
+    '/': <IconDashboard />,
+    '/alerts': <IconAlerts />,
+    '/emails': <IconMail />,
+    '/executives': <IconExecutive />,
+    '/vendors': <IconVendor />,
+    '/reports': <IconReports />,
+    '/audit': <IconAudit />,
+    '/users': <IconUsers />,
+    '/account': <IconAccount />,
+  };
+
   return (
     <div className="app">
       <a className="skip" href="#content">
@@ -149,9 +175,9 @@ function Shell() {
       <aside className={menu ? 'sidebar expanded' : 'sidebar'}>
         <Link className="brand" to="/">
           <span className="brand-mark" aria-hidden="true">
-            B
+            <IconShield width="20" height="20" />
           </span>
-          BEC Guard
+          <span>BEC Guard</span>
         </Link>
         <button
           className="menu-toggle secondary"
@@ -169,7 +195,10 @@ function Shell() {
               end={path === '/'}
               onClick={() => setMenu(false)}
             >
-              {title}
+              <span className="nav-icon" aria-hidden="true">
+                {iconMap[path]}
+              </span>
+              <span>{title}</span>
             </NavLink>
           ))}
         </nav>
@@ -181,15 +210,19 @@ function Shell() {
       </aside>
       <div className="workspace">
         <header className="topbar">
-          <span>Centro de revisión</span>
+          <div className="topbar-title">
+            <span className="live-dot" aria-hidden="true" />
+            <span>Centro de revisión</span>
+          </div>
           <div>
             <NotificationBell />
             <span className="identity">
               {user?.name}
               <small>{label(user?.role)}</small>
             </span>
-            <button className="secondary" onClick={logout}>
-              Cerrar sesión
+            <button className="secondary logout-button" onClick={logout}>
+              <IconLogOut aria-hidden="true" />
+              <span>Cerrar sesión</span>
             </button>
           </div>
         </header>

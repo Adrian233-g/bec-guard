@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, message } from './api';
 import { date, label } from './components';
+import { IconBell } from './icons';
 import type { Notification } from './types';
 
 const REFRESH_MS = 60_000;
@@ -108,7 +109,8 @@ export function NotificationBell() {
         aria-label={count ? `Avisos, ${count} sin leer` : 'Avisos'}
         onClick={toggle}
       >
-        Avisos
+        <IconBell aria-hidden="true" />
+        <span>Avisos</span>
         {count > 0 && (
           <span className="notification-count" aria-hidden="true">
             {count > 99 ? '99+' : count}
