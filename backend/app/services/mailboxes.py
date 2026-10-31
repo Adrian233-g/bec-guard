@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.identity import normalize_email
-from app.models import Mailbox, Role, User
+from app.models import Mailbox, MailboxConnection, Role, User
 from app.services.audit import AuditAction, record_mailbox_event
 
 
@@ -80,11 +80,16 @@ def update_mailbox_status(
     actor: User,
     peer: str | None = None,
 ) -> Mailbox:
-    mailbox = session.get(Mailbox, mailbox_id)
+    mailbox = session.scalar(select(Mailbox).where(Mailbox.id == mailbox_id).with_for_update())
     if mailbox is None:
         raise HTTPException(404, "Mailbox not found")
     if mailbox.user_id != actor.id and actor.role != Role.ADMIN:
         raise HTTPException(404, "Mailbox not found")
+
+    if session.scalar(
+        select(MailboxConnection.id).where(MailboxConnection.mailbox_id == mailbox_id)
+    ):
+        raise HTTPException(409, "Use the connection controls to manage this mailbox")
 
     if status not in {"PENDING", "DISCONNECTED"}:
         raise HTTPException(409, "Mailbox activation requires a verified connection")

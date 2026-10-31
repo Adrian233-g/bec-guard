@@ -141,3 +141,53 @@ it('employee can register a mailbox in account', async () => {
     ),
   ).toBe(true);
 });
+
+it('employee connects a registered Gmail without keeping the app password visible', async () => {
+  sessionStorage.setItem(tokenKey, 't');
+  let mailboxStatus = 'PENDING';
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    void init;
+    if (url.endsWith('/auth/me'))
+      return response({ ...user, role: 'EMPLOYEE' });
+    if (url.endsWith('/mailboxes/mb1/connect')) {
+      mailboxStatus = 'ACTIVE';
+      return response({ status: mailboxStatus });
+    }
+    if (url.endsWith('/mailboxes'))
+      return response([
+        {
+          id: 'mb1',
+          email_address: 'emp@gmail.com',
+          provider: 'gmail',
+          status: mailboxStatus,
+        },
+      ]);
+    return response([]);
+  });
+  vi.stubGlobal('fetch', fetch);
+  render(
+    <MemoryRouter initialEntries={['/account']}>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </MemoryRouter>,
+  );
+  await userEvent.type(
+    await screen.findByLabelText('Contraseña de aplicación de Google'),
+    'app-password-secret',
+  );
+  await userEvent.click(screen.getByRole('button', { name: 'Conectar Gmail' }));
+  await screen.findByText('Gmail conectado. Se analizarán los correos nuevos.');
+  expect(
+    await screen.findByRole('button', { name: 'Desconectar Gmail' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByDisplayValue('app-password-secret'),
+  ).not.toBeInTheDocument();
+  const call = fetch.mock.calls.find(([url]) =>
+    url.endsWith('/mailboxes/mb1/connect'),
+  );
+  expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+    app_password: 'app-password-secret',
+  });
+});

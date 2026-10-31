@@ -2,8 +2,10 @@
 
 Registrar una dirección desde la aplicación crea un buzón `PENDING`. Eso no
 comprueba que el usuario controle Gmail ni inicia una conexión. La API no permite
-activar el buzón manualmente: la verificación real y la gestión de contraseñas de
-aplicación pertenecen a la etapa 3. Las direcciones pendientes no reservan una
+activar el buzón manualmente: la conexión verifica la contraseña de aplicación
+y crea un receptor mediante la API de n8n. La recepción se considera habilitada
+solo cuando la pantalla confirma la conexión; eventos durante la publicación
+pueden rechazarse antes de esa confirmación. Las direcciones pendientes no reservan una
 dirección frente a otra persona; solo puede haber un buzón activo por dirección.
 
 El conector n8n existente utiliza una sola clave de automatización y queda limitado
@@ -11,7 +13,7 @@ a **un buzón** definido en el backend mediante `AUTOMATION_MAILBOX_ID`. No elig
 dueño a partir de los campos To/Cc ni acepta que el workflow lo especifique. Si la
 variable falta, el buzón no está activo o su dueño está desactivado, la API rechaza
 la ingestión y el análisis. La API también admite credenciales derivadas limitadas a un buzón concreto,
-pero aún falta aprovisionarlas y administrar sus receptores desde la aplicación.
+y el backend aprovisiona un receptor por usuario mediante la API de n8n.
 Cada clave derivada se vincula además a una conexión concreta activa; al
 desactivarla, sustituirla o marcarla para reconciliación, deja de aceptarse.
 
@@ -49,9 +51,10 @@ un único conector, aportar además los tres parámetros explícitos de propieta
 dirección y `legacy_connector_confirmed=true` indicados arriba. Si los correos no
 pertenecen todos a ese buzón, esta vía de conector único se rechaza.
 
-Desconectar un buzón en la API impide que el backend procese nuevas entradas para
-él, pero todavía no detiene por sí mismo el trigger IMAP de n8n. Las ejecuciones de
-n8n pueden contener correos y requieren control de acceso independiente.
+La desconexión de una cuenta administrada por la app bloquea primero su acceso al
+backend, luego despublica y elimina sus recursos de n8n. El conector anterior
+configurado manualmente debe detenerse desde n8n. Las ejecuciones de n8n pueden
+contener correos y requieren control de acceso independiente.
 
 ## Verificación previa de Gmail
 
@@ -64,14 +67,22 @@ No guarda ni devuelve la contraseña y no cambia el estado del buzón; verificar
 una vez no demuestra que seguirá siendo válida y no crea un receptor. El alta
 final deberá verificarla otra vez al crear la credencial de n8n.
 
-La creación de receptores desde la app todavía no está integrada. El módulo
-`n8n/mailbox-provisioner.mjs` requiere que su futuro llamador persista cada paso
-y gestione resultados inciertos antes de reintentar. No usarlo directamente en
-una instancia real sin ese mecanismo de recuperación y sin completar la
-integración de permisos y ciclo de vida.
+## Conexión por usuario y recuperación
 
-La revisión `0012_mailbox_connection_progress` agrega `mailbox_connections`
-para guardar los IDs de recursos y la última etapa confirmada sin almacenar
-contraseñas ni tokens. Si un resultado remoto es incierto, el registro puede
-marcarse para reconciliación y no permite avanzar automáticamente. Estas piezas
-aún no ejecutan el aprovisionador ni hacen recuperación por sí solas.
+El backend usa `N8N_API_KEY` para crear credenciales y publicar un workflow por
+buzón. El empleado introduce la contraseña de aplicación en «Mi cuenta»; el
+backend la verifica y la envía a n8n para guardarla cifrada. No la guarda en la
+base de BEC Guard, en el JSON del workflow ni en la bitácora. El backend también
+crea una credencial de automatización distinta para cada conexión.
+
+La revisión `0012_mailbox_connection_progress` guarda los IDs de recursos y la
+última etapa confirmada sin almacenar contraseñas ni tokens. Una interrupción
+puede dejar recursos remotos y marca la conexión para revisión; no se reintenta
+automáticamente. Por ahora la recuperación de una operación interrumpida requiere
+revisión manual por el administrador de n8n. La contraseña revocada o fallos
+posteriores del receptor aún no se detectan automáticamente.
+
+La aplicación y la API de n8n deben operar en una red confiable: la configuración
+local usa HTTP dentro de Docker. La clave de la API n8n es administrativa y solo
+debe estar disponible en el backend. El conector multiusuario se ha probado con
+simulaciones; falta verificar el ciclo completo con Gmail y n8n reales.

@@ -102,6 +102,7 @@ hasta que se solicite un análisis semántico.
 | GENERIC_TIMEZONE | Zona horaria de n8n; por defecto America/Lima. |
 | JWT_SECRET_KEY | Obligatoria para la API, sin valor predeterminado; solo en `.env`/entorno. |
 | JWT_ACCESS_TOKEN_MINUTES / JWT_ALGORITHM | Expiración de acceso (30 minutos por defecto) y HS256. |
+| N8N_API_KEY | Clave de la API de n8n para que el backend gestione receptores por empleado; nunca al frontend. |
 | AUTOMATION_MAILBOX_ID | UUID del único buzón activo vinculado al conector n8n actual; ver [migración y seguridad](docs/mailbox-security.md). |
 | AUTOMATION_API_KEY | Key aleatoria >=32 caracteres, solo para automatización backend y webhook n8n. Opcional al arrancar; nunca al frontend. |
 | BEC_GUARD_BACKEND_URL | URL interna usada al importar el workflow, default http://backend:8000. |
@@ -295,15 +296,18 @@ roles autenticados. Claim/release/resolve implementan HITL, sin PATCH/DELETE.
 ## Orquestar con n8n
 
 Configura una AUTOMATION_API_KEY aleatoria >=32 caracteres en `.env`, sin imprimirla
-ni versionarla. Backend y n8n reciben la misma key. Vincula el backend a un buzón
-activo mediante `AUTOMATION_MAILBOX_ID`. Sigue la [guía n8n](n8n/README.md)
-para importar/publicar el workflow y llamar a `/webhook/bec-guard/analyze` con
-EmailIngestRequest y header X-BEC-Automation-Key. Devuelve ALERT, NO_ALERT o ERROR.
+ni versionarla. El workflow manual anterior usa esa key y un buzón configurado
+con `AUTOMATION_MAILBOX_ID`. Para receptores individuales, configura además
+`N8N_API_KEY`; el backend crea una credencial acotada por buzón. Sigue la
+[guía n8n](n8n/README.md) para la configuración y migración. El webhook manual
+`/webhook/bec-guard/analyze` devuelve ALERT, NO_ALERT o ERROR.
 
 n8n usa exclusivamente POST /api/automation/emails (Message-ID idempotente) y
 POST /api/automation/emails/{id}/analyze (analysis + alert_id). Esa key no accede
 a los endpoints humanos. El POST humano conserva 409 en duplicados. n8n conserva el historial de ejecuciones sin borrado automático para facilitar la
-demostración y el diagnóstico; ver detalles y límites en la guía. La entrada IMAP requiere una credencial y activación manual; no hay notificaciones.
+demostración y el diagnóstico; ver detalles y límites en la guía. El trigger IMAP
+anterior se administra manualmente; los receptores individuales se crean desde la
+aplicación. No hay notificaciones.
 
 Regresión de desarrollo desde backend/, sin proveedor ni BD:
 

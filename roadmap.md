@@ -136,7 +136,7 @@ usar SQL manual, y los permisos de cada rol se verifican en el servidor.
       (uq_emails_mailbox_message_id). Cada dueño tiene acceso a su propia recepción
       sin filtraciones ni colisiones.
 - [x] Restringir la automatización actual a un único buzón configurado en el servidor.
-      La identidad independiente para varios conectores queda pendiente en la etapa 3.
+      Las credenciales independientes para varios conectores están implementadas en código.
 - [x] Diseñar una migración que exige confirmar explícitamente el dueño y dirección
       de los correos anteriores, sin inventarlos. Falta confirmar y aplicar en la base local.
 - [x] Probar al menos dos empleados con buzones distintos, el mismo Message-ID en
@@ -151,23 +151,16 @@ La migración y el conector existente requieren configuración explícita: ver
 
 ### 3. Conectar Gmail desde BEC Guard
 
-- [ ] Añadir pantalla de conexión para ingresar Gmail y contraseña de aplicación;
-      verificar conexión, mostrar estado y permitir desconectar o actualizarla.
-      Avance: endpoint verifica IMAP de solo lectura para el dueño, sin conservar
-      la contraseña ni cambiar el estado; falta integrarlo al alta del receptor.
-- [ ] Definir almacenamiento cifrado y gestión de claves/secretos; evitar exponer
-      credenciales en navegador, logs, API, bitácora, exports o historial n8n.
-- [ ] Crear, activar y detener receptores IMAP por buzón sin que los empleados
-      administren n8n. Avance: existe un generador de workflows a partir del flujo
-      canónico y credenciales de automatización limitadas a cada buzón; falta
-      aprovisionar las credenciales y workflows desde la aplicación y gestionar
-      su ciclo de vida. Hay primitivas probadas contra una API n8n simulada para
-      crear, verificar, publicar y eliminar recursos; falta conectarlas con la API,
-      integrar la persistencia de pasos y reconciliar fallos. La revisión 0012
-      añade un registro sin secretos y transiciones que bloquean el avance ante
-      resultados inciertos. Las claves quedan vinculadas a una conexión concreta:
-      al desactivarla o sustituirla, la clave anterior deja de funcionar. Falta
-      integrar todo el ciclo de vida; aún no hay conexión operativa.
+- [ ] Añadir pantalla para ingresar Gmail y contraseña de aplicación; verificar,
+      conectar y desconectar. Implementado en código y probado con servicios
+      simulados; falta validar con n8n y Gmail reales, además de actualizar
+      credenciales revocadas y recuperar operaciones interrumpidas.
+- [ ] Definir almacenamiento cifrado y gestión de claves/secretos; el código usa
+      credenciales cifradas de n8n y no guarda la contraseña en BEC Guard. Falta
+      comprobar el ciclo real y el respaldo de claves y credenciales.
+- [ ] Crear, activar y detener receptores IMAP por buzón sin acceso del empleado
+      a n8n. Implementado en código con credenciales separadas y checkpoints;
+      falta validar contra n8n real y automatizar la reconciliación de fallos.
 - [ ] Garantizar el punto de partida independiente por buzón y la regla de omitir
       correos recibidos mientras el workflow estaba apagado. Adaptar el ajuste actual
       de n8n a los receptores generados. El ajuste tiene pruebas simuladas por

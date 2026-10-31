@@ -27,6 +27,10 @@ services:
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       AUTOMATION_API_KEY: ${AUTOMATION_API_KEY:-}
       AUTOMATION_MAILBOX_ID: ${AUTOMATION_MAILBOX_ID:-}
+      N8N_API_URL: http://n8n:5678
+      N8N_API_KEY: ${N8N_API_KEY:-}
+      N8N_WORKFLOW_TEMPLATE: /opt/bec-guard-n8n/workflows/bec-analysis-webhook.json
+      BEC_GUARD_BACKEND_URL: http://backend:8000
       LLM_PROVIDER: ${LLM_PROVIDER:-}
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
@@ -38,6 +42,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ./n8n:/opt/bec-guard-n8n:ro
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:

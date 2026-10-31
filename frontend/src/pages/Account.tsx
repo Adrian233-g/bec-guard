@@ -80,6 +80,56 @@ export function Account() {
     }
   }
 
+  async function connectMailbox(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!mailbox) return;
+    const form = e.currentTarget;
+    const appPassword = String(new FormData(form).get('app_password') || '');
+    if (!appPassword) return;
+    setMailboxBusy(true);
+    setMailboxError('');
+    setMailboxNotice('');
+    try {
+      await api(`/mailboxes/${mailbox.id}/connect`, {
+        method: 'POST',
+        body: JSON.stringify({ app_password: appPassword }),
+      });
+      setMailboxNotice('Gmail conectado. Se analizarán los correos nuevos.');
+      mailboxResource.reload();
+    } catch (e) {
+      setMailboxError(
+        e instanceof ApiError && e.status === 400
+          ? 'Gmail rechazó la contraseña de aplicación. Comprueba los datos e inténtalo de nuevo.'
+          : 'No se pudo completar la conexión. Puede requerir una revisión del administrador.',
+      );
+      mailboxResource.reload();
+    } finally {
+      form.reset();
+      setMailboxBusy(false);
+    }
+  }
+
+  async function disconnectMailbox() {
+    if (!mailbox) return;
+    setMailboxBusy(true);
+    setMailboxError('');
+    setMailboxNotice('');
+    try {
+      await api(`/mailboxes/${mailbox.id}/disconnect`, { method: 'POST' });
+      setMailboxNotice(
+        'Gmail desconectado. Ya no se analizarán correos nuevos.',
+      );
+      mailboxResource.reload();
+    } catch {
+      setMailboxError(
+        'No se pudo completar la desconexión. Puede requerir una revisión del administrador.',
+      );
+      mailboxResource.reload();
+    } finally {
+      setMailboxBusy(false);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -100,8 +150,8 @@ export function Account() {
       <section className="panel" aria-labelledby="mailbox-heading">
         <h2 id="mailbox-heading">Buzón personal</h2>
         <p className="muted">
-          Registra tu dirección. La verificación y conexión de Gmail estarán
-          disponibles en una próxima etapa.
+          Conecta tu Gmail con una contraseña de aplicación de Google. Se
+          analizarán los correos nuevos mientras el sistema esté encendido.
         </p>
 
         {mailboxNotice && (
@@ -142,10 +192,35 @@ export function Account() {
                 </dd>
               </div>
             </dl>
-            <p className="muted">
-              La conexión individual de Gmail aún no está disponible desde esta
-              pantalla.
-            </p>
+            {mailbox.status === 'ACTIVE' ? (
+              <button
+                disabled={mailboxBusy}
+                onClick={() => void disconnectMailbox()}
+              >
+                Desconectar Gmail
+              </button>
+            ) : (
+              <form onSubmit={(e) => void connectMailbox(e)}>
+                <label htmlFor="app-password">
+                  Contraseña de aplicación de Google
+                </label>
+                <input
+                  id="app-password"
+                  name="app_password"
+                  type="password"
+                  autoComplete="off"
+                  required
+                  maxLength={128}
+                />
+                <p className="muted">
+                  Usa la contraseña de aplicación, no la contraseña habitual de
+                  Gmail.
+                </p>
+                <button disabled={mailboxBusy}>
+                  {mailboxBusy ? 'Conectando…' : 'Conectar Gmail'}
+                </button>
+              </form>
+            )}
           </div>
         ) : (
           <form onSubmit={(e) => void submitMailbox(e)}>

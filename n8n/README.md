@@ -153,21 +153,28 @@ interpretar el correo; la normalización no los envía al backend ni los analiza
 Las ejecuciones terminadas conservan sus datos sin borrado automático. Cada correo enviado al análisis comparte su texto con el
 proveedor de IA elegido. No se envían avisos por correo automáticamente.
 
-## Base para receptores por empleado
+## Receptores por empleado desde la aplicación
 
-`mailbox-workflow.mjs` genera un receptor aislado a partir del workflow canónico:
-usa credenciales IMAP y de automatización distintas, sin copiar secretos en el JSON.
-La API puede autenticar una clave derivada para un buzón concreto; esa clave no
-permite analizar correos de otro buzón. El ajuste de UIDNEXT también reconoce los
-receptores generados. El generador y las claves aún no se aprovisionan ni activan
-automáticamente desde la aplicación: **todavía no hay conexión multiusuario
-operativa**. No publicar instancias generadas hasta implementar y probar su ciclo
-de vida completo y el manejo seguro de credenciales.
+1. Revisa la [migración y propiedad de buzones](../docs/mailbox-security.md)
+   antes de actualizar si ya tienes correos existentes.
+2. En la cuenta administradora de n8n crea una API key en Settings → n8n API.
+   Guárdala como `N8N_API_KEY` en `.env`; no la compartas ni la subas a Git.
+   Debe permitir crear, probar y eliminar credenciales y crear, publicar,
+   despublicar y eliminar workflows. Mantén también `AUTOMATION_API_KEY`.
+3. Reconstruye backend y n8n, aplica las migraciones según la guía y entra como
+   empleado en «Mi cuenta». Registra su Gmail y usa su contraseña de aplicación
+   para conectar. La app crea una credencial IMAP cifrada y un receptor propio.
+4. Si ya usas el trigger manual anterior para ese mismo Gmail, no mantengas ambos
+   receptores activos: coordina su migración al empleado y desactiva el anterior.
 
-Las primitivas `mailbox-provisioner.mjs` y `n8n-api-client.mjs` crean credenciales
-y workflows por la API pública de n8n. La credencial IMAP se prueba antes de crear
-el workflow; publicar es un paso independiente. La eliminación despublica primero
-y registra cada paso mediante un callback obligatorio. Se probaron con un servidor
-HTTP local simulado, no contra n8n ni Gmail reales. Su integración necesita
-persistir los checkpoints, reconciliar resultados inciertos y autorizar cada
-operación desde la app; no son todavía un conector listo para usuarios.
+El backend registra los pasos y bloquea conexiones con resultados inciertos. Si
+la app informa que se requiere revisión, un administrador debe comprobar los
+recursos de n8n y el registro `mailbox_connections` antes de reintentar; no borrar
+recursos a ciegas. Los receptores generados usan el mismo análisis que el workflow
+canónico y tienen una clave de automatización limitada a su propio buzón.
+
+Estas rutas tienen pruebas automatizadas con una API n8n simulada; todavía falta
+una prueba de extremo a extremo con Gmail y n8n reales, incluida la regla de los
+correos recibidos con Docker apagado. La API key y las contraseñas no deben
+aparecer en el historial del workflow, pero los propios correos sí pueden quedar
+en las ejecuciones y deben protegerse de otros usuarios.

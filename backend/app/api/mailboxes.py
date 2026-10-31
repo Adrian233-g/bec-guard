@@ -4,7 +4,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_automation_settings, get_current_user
+from app.core.config import AutomationSettings, N8nSettings
 from app.core.database import get_session
 from app.models import User
 from app.schemas.mailbox import (
@@ -19,12 +20,14 @@ from app.services.gmail_verification import (
     GmailUnavailable,
     verify_gmail_access,
 )
+from app.services.mailbox_provisioning import connect_mailbox, disconnect_mailbox
 from app.services.mailboxes import (
     create_mailbox,
     get_mailbox,
     get_user_mailboxes,
     update_mailbox_status,
 )
+from app.services.n8n_mailboxes import N8nMailboxClient, N8nUnavailable
 
 router = APIRouter(prefix="/api/mailboxes", tags=["Mailboxes"])
 Database = Annotated[Session, Depends(get_session)]
@@ -92,3 +95,54 @@ def verify_gmail(
     except GmailUnavailable:
         raise HTTPException(503, "Gmail connection unavailable") from None
     return {"verified": True}
+
+
+def get_n8n_mailbox_client() -> N8nMailboxClient:
+    settings = N8nSettings()
+    try:
+        return N8nMailboxClient(
+            settings.n8n_api_url,
+            settings.n8n_api_key.get_secret_value(),
+            settings.n8n_workflow_template,
+            settings.bec_guard_backend_url,
+        )
+    except N8nUnavailable:
+        raise HTTPException(503, "Mailbox connections unavailable") from None
+
+
+@router.post("/{mailbox_id}/connect", response_model=MailboxResponse)
+def connect_gmail(
+    mailbox_id: UUID,
+    body: GmailVerificationRequest,
+    session: Database,
+    actor: CurrentUser,
+    request: Request,
+    client: Annotated[N8nMailboxClient, Depends(get_n8n_mailbox_client)],
+    settings: Annotated[AutomationSettings, Depends(get_automation_settings)],
+):
+    return connect_mailbox(
+        session,
+        actor=actor,
+        mailbox_id=mailbox_id,
+        app_password=body.app_password.get_secret_value(),
+        client=client,
+        master_key=settings.automation_api_key.get_secret_value(),
+        peer=request.client.host if request.client else None,
+    )
+
+
+@router.post("/{mailbox_id}/disconnect", response_model=MailboxResponse)
+def disconnect_gmail(
+    mailbox_id: UUID,
+    session: Database,
+    actor: CurrentUser,
+    request: Request,
+    client: Annotated[N8nMailboxClient, Depends(get_n8n_mailbox_client)],
+):
+    return disconnect_mailbox(
+        session,
+        actor=actor,
+        mailbox_id=mailbox_id,
+        client=client,
+        peer=request.client.host if request.client else None,
+    )

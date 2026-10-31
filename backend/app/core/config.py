@@ -55,3 +55,14 @@ class AutomationSettings(BaseSettings):
 
     automation_api_key: SecretStr = SecretStr("")
     automation_mailbox_id: str = ""
+
+
+class N8nSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=ROOT_ENV, extra="ignore", hide_input_in_errors=True)
+
+    n8n_api_url: str = "http://n8n:5678"
+    n8n_api_key: SecretStr = SecretStr("")
+    bec_guard_backend_url: str = "http://backend:8000"
+    n8n_workflow_template: Path = (
+        Path(__file__).resolve().parents[3] / "n8n/workflows/bec-analysis-webhook.json"
+    )
