@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Badge, EmptyState, date, label } from './components';
+import { IconExternalLink } from './icons';
 import type { Analysis, EmailDetail } from './types';
 
 export const ALERT_THRESHOLD = 70;
@@ -95,21 +96,33 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
           const signals = analysis.signals.filter((s) => s.source === source);
           return (
             signals.length > 0 && (
-              <div className="signal-group" key={source}>
-                <h3>
-                  {source === 'CONTEXT'
-                    ? 'Contexto organizacional'
-                    : source === 'RULE'
-                      ? 'Reglas técnicas y de contenido'
-                      : 'Análisis semántico'}
-                </h3>
+              <div
+                className={`signal-group signal-group-${source.toLowerCase()}`}
+                key={source}
+              >
+                <div className="signal-group-header">
+                  <span
+                    className={`signal-source-badge signal-source-${source.toLowerCase()}`}
+                  >
+                    {source}
+                  </span>
+                  <h3>
+                    {source === 'CONTEXT'
+                      ? 'Contexto organizacional'
+                      : source === 'RULE'
+                        ? 'Reglas técnicas y de contenido'
+                        : 'Análisis semántico'}
+                  </h3>
+                </div>
                 <ul className="signals">
                   {signals.map((s, i) => (
                     <li key={`${s.code}-${i}`}>
                       <div>
                         <strong>{s.code}</strong>
                         {source !== 'SEMANTIC' && !!s.contribution && (
-                          <small>+{s.contribution} puntos deterministas</small>
+                          <span className="signal-contribution">
+                            +{s.contribution} puntos deterministas
+                          </span>
                         )}
                       </div>
                       <p>{s.description}</p>
@@ -150,31 +163,35 @@ export function EmailContent({ email }: { email: EmailDetail }) {
     <section className="panel">
       <div className="section-heading">
         <h2>Correo original</h2>
-        <Link to={`/emails/${email.id}`}>Abrir correo</Link>
+        <Link to={`/emails/${email.id}`} className="open-email-link">
+          <span>Abrir correo</span>
+          <IconExternalLink aria-hidden="true" />
+        </Link>
       </div>
       <h3 className="email-subject">{email.subject || '(Sin asunto)'}</h3>
       <dl className="facts email-headers">
         <div>
           <dt>From</dt>
           <dd>
-            {email.sender_name} &lt;{email.sender_email}&gt;
+            <span className="sender-name">{email.sender_name}</span>{' '}
+            <span className="mono">&lt;{email.sender_email}&gt;</span>
           </dd>
         </div>
         <div>
           <dt>Reply-To</dt>
-          <dd>{email.reply_to || '—'}</dd>
+          <dd className="mono">{email.reply_to || '—'}</dd>
         </div>
         <div>
           <dt>Return-Path</dt>
-          <dd>{email.return_path || '—'}</dd>
+          <dd className="mono">{email.return_path || '—'}</dd>
         </div>
         <div>
           <dt>To</dt>
-          <dd>{email.to_recipients.join(', ') || '—'}</dd>
+          <dd className="mono">{email.to_recipients.join(', ') || '—'}</dd>
         </div>
         <div>
           <dt>Cc</dt>
-          <dd>{email.cc_recipients.join(', ') || '—'}</dd>
+          <dd className="mono">{email.cc_recipients.join(', ') || '—'}</dd>
         </div>
         <div>
           <dt>Fecha</dt>
@@ -182,7 +199,7 @@ export function EmailContent({ email }: { email: EmailDetail }) {
         </div>
         <div>
           <dt>Authentication-Results</dt>
-          <dd>{email.authentication_results || 'Sin resultados'}</dd>
+          <dd className="mono">{email.authentication_results || 'Sin resultados'}</dd>
         </div>
       </dl>
       <details open>
@@ -195,14 +212,24 @@ export function EmailContent({ email }: { email: EmailDetail }) {
 export function AnalysisHeadline({ analysis }: { analysis: Analysis }) {
   return (
     <div className="risk-headline">
-      <div>
+      <div className="risk-score-wrapper">
         <Badge value={analysis.risk_level} />
         <strong className="score">
           {analysis.risk_score}
           <small>/100</small>
         </strong>
       </div>
-      <p>{label(analysis.bec_type)}</p>
+      <div className="threat-summary-meta">
+        <p className="threat-bec-title">{label(analysis.bec_type)}</p>
+        <div className="score-sub-metrics">
+          <span className="score-sub-pill" title="Puntaje determinista de reglas">
+            Reglas: <strong>{analysis.deterministic_score ?? 0}</strong>
+          </span>
+          <span className="score-sub-pill" title="Puntaje de análisis semántico">
+            Semántica: <strong>{analysis.semantic_score ?? 0}</strong>
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
