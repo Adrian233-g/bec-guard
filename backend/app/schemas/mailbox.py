@@ -1,6 +1,14 @@
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    SecretStr,
+    model_validator,
+)
 
 from app.models.enums import MailboxProvider, MailboxStatus
 
@@ -34,3 +42,13 @@ class MailboxResponse(BaseModel):
     status: str
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+
+class GmailVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    app_password: SecretStr = Field(min_length=1, max_length=128)
+
+
+class GmailVerificationResponse(BaseModel):
+    verified: bool

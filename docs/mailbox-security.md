@@ -50,3 +50,20 @@ pertenecen todos a ese buzón, esta vía de conector único se rechaza.
 Desconectar un buzón en la API impide que el backend procese nuevas entradas para
 él, pero todavía no detiene por sí mismo el trigger IMAP de n8n. Las ejecuciones de
 n8n pueden contener correos y requieren control de acceso independiente.
+
+## Verificación previa de Gmail
+
+`POST /api/mailboxes/{id}/verify-gmail` recibe `{"app_password": "..."}`
+únicamente para un buzón del usuario autenticado. Conecta mediante TLS a
+`imap.gmail.com`, comprueba el acceso a INBOX en modo de solo lectura y cierra
+la conexión sin leer mensajes. Devuelve `{"verified": true}` si logra entrar,
+`400` si Google rechaza la contraseña y `503` si la conexión no está disponible.
+No guarda ni devuelve la contraseña y no cambia el estado del buzón; verificar
+una vez no demuestra que seguirá siendo válida y no crea un receptor. El alta
+final deberá verificarla otra vez al crear la credencial de n8n.
+
+La creación de receptores desde la app todavía no está integrada. El módulo
+`n8n/mailbox-provisioner.mjs` requiere que su futuro llamador persista cada paso
+y gestione resultados inciertos antes de reintentar. No usarlo directamente en
+una instancia real sin ese mecanismo de recuperación y sin completar la
+integración de permisos y ciclo de vida.

@@ -153,13 +153,17 @@ La migración y el conector existente requieren configuración explícita: ver
 
 - [ ] Añadir pantalla de conexión para ingresar Gmail y contraseña de aplicación;
       verificar conexión, mostrar estado y permitir desconectar o actualizarla.
+      Avance: endpoint verifica IMAP de solo lectura para el dueño, sin conservar
+      la contraseña ni cambiar el estado; falta integrarlo al alta del receptor.
 - [ ] Definir almacenamiento cifrado y gestión de claves/secretos; evitar exponer
       credenciales en navegador, logs, API, bitácora, exports o historial n8n.
 - [ ] Crear, activar y detener receptores IMAP por buzón sin que los empleados
       administren n8n. Avance: existe un generador de workflows a partir del flujo
       canónico y credenciales de automatización limitadas a cada buzón; falta
       aprovisionar las credenciales y workflows desde la aplicación y gestionar
-      su ciclo de vida. Aún no hay conexión individual operativa.
+      su ciclo de vida. Hay primitivas probadas contra una API n8n simulada para
+      crear, verificar, publicar y eliminar recursos; falta conectarlas con la API,
+      persistir los pasos y reconciliar fallos. Aún no hay conexión operativa.
 - [ ] Garantizar el punto de partida independiente por buzón y la regla de omitir
       correos recibidos mientras el workflow estaba apagado. Adaptar el ajuste actual
       de n8n a los receptores generados. El ajuste tiene pruebas simuladas por

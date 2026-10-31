@@ -7,7 +7,18 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.core.database import get_session
 from app.models import User
-from app.schemas.mailbox import MailboxCreate, MailboxResponse, MailboxUpdate
+from app.schemas.mailbox import (
+    GmailVerificationRequest,
+    GmailVerificationResponse,
+    MailboxCreate,
+    MailboxResponse,
+    MailboxUpdate,
+)
+from app.services.gmail_verification import (
+    GmailAuthenticationFailed,
+    GmailUnavailable,
+    verify_gmail_access,
+)
 from app.services.mailboxes import (
     create_mailbox,
     get_mailbox,
@@ -63,3 +74,21 @@ def update_single_mailbox(
         actor=actor,
         peer=request.client.host if request.client else None,
     )
+
+
+@router.post("/{mailbox_id}/verify-gmail", response_model=GmailVerificationResponse)
+def verify_gmail(
+    mailbox_id: UUID, body: GmailVerificationRequest, session: Database, actor: CurrentUser
+):
+    mailbox = get_mailbox(session, mailbox_id)
+    if mailbox is None or mailbox.user_id != actor.id:
+        raise HTTPException(404, "Mailbox not found")
+    if mailbox.provider != "gmail":
+        raise HTTPException(400, "Gmail mailbox required")
+    try:
+        verify_gmail_access(mailbox.email_address, body.app_password.get_secret_value())
+    except GmailAuthenticationFailed:
+        raise HTTPException(400, "Gmail authentication failed") from None
+    except GmailUnavailable:
+        raise HTTPException(503, "Gmail connection unavailable") from None
+    return {"verified": True}

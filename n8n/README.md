@@ -163,3 +163,11 @@ receptores generados. El generador y las claves aún no se aprovisionan ni activ
 automáticamente desde la aplicación: **todavía no hay conexión multiusuario
 operativa**. No publicar instancias generadas hasta implementar y probar su ciclo
 de vida completo y el manejo seguro de credenciales.
+
+Las primitivas `mailbox-provisioner.mjs` y `n8n-api-client.mjs` crean credenciales
+y workflows por la API pública de n8n. La credencial IMAP se prueba antes de crear
+el workflow; publicar es un paso independiente. La eliminación despublica primero
+y registra cada paso mediante un callback obligatorio. Se probaron con un servidor
+HTTP local simulado, no contra n8n ni Gmail reales. Su integración necesita
+persistir los checkpoints, reconciliar resultados inciertos y autorizar cada
+operación desde la app; no son todavía un conector listo para usuarios.
