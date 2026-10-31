@@ -80,6 +80,19 @@ Una cuenta conserva **un único rol**, pero ser ADMIN o ANALYST no impide ser du
 de un buzón. Los permisos de propietario y los permisos para investigar alertas se
 combinan sin conceder acceso a otros correos normales.
 
+## Estado local tras la limpieza
+
+- El usuario decidió empezar sin los correos de prueba. Se eliminaron los 16
+  correos existentes y sus 5 análisis; no había alertas. Se conservaron los
+  dos usuarios, ejecutivos, proveedores y la bitácora, así como el historial de
+  ejecuciones de n8n.
+- La base local sigue en `0009_roles_employee`; las migraciones posteriores aún
+  no se han aplicado. Como ahora no hay correos históricos, no necesitan una
+  asignación de propietario, siempre que no entren mensajes antes de migrar.
+- El workflow IMAP anterior sigue publicado. Mientras esté activo y Docker esté
+  encendido, puede recibir nuevos correos; coordinar su transición antes de crear
+  el receptor individual del mismo Gmail para no duplicar la recepción.
+
 ## Estado real al comenzar
 
 - [x] Aplicación React, API FastAPI, PostgreSQL y n8n; autenticación y RBAC básicos.
@@ -138,7 +151,7 @@ usar SQL manual, y los permisos de cada rol se verifican en el servidor.
 - [x] Restringir la automatización actual a un único buzón configurado en el servidor.
       Las credenciales independientes para varios conectores están implementadas en código.
 - [x] Diseñar una migración que exige confirmar explícitamente el dueño y dirección
-      de los correos anteriores, sin inventarlos. Falta confirmar y aplicar en la base local.
+      de los correos anteriores, sin inventarlos. La base local se limpió; si entran nuevos correos antes de migrar, hay que confirmar su dueño.
 - [x] Probar al menos dos empleados con buzones distintos, el mismo Message-ID en
       ambos y acceso cruzado denegado; verificar la excepción para alertas reales.
 
