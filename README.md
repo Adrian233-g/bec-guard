@@ -407,7 +407,8 @@ referencias bancarias. ANALYST no tiene acceso. Ver [alcance y privacidad](docs/
 
 Fase 6 añade BECAlert automática, lectura de alertas, API key acotada y workflow
 Webhook n8n. Fase 7 añade frontend funcional e HITL. Quedan pendientes CRUD de usuarios, recuperación, refresh tokens y notificaciones.
-Gmail puede conectarse por IMAP con contraseña de aplicación; Microsoft Graph
+Gmail puede conectarse por IMAP con contraseña de aplicación; los correos
+recibidos mientras el workflow está apagado se omiten al iniciarlo; Microsoft Graph
 no está integrado.
 
 Las APIs de contexto ofrecen GET/POST/PATCH; ADMIN/MANAGER escriben. Emails ofrecen

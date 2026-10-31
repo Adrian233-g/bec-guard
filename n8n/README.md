@@ -127,15 +127,20 @@ estado leído del mensaje. El código versionado no contiene credenciales.
    desde otra cuenta y consulta **Correos** y **Alertas** en la aplicación.
    Registra tus ejecutivos y proveedores antes de probar la detección contextual.
 
-El nodo tiene habilitado el seguimiento por UID y pide correos leídos y no leídos.
-En la primera activación, la versión instalada de n8n puede incluir mensajes del
-mismo día al recibir el primer correo; esto puede consumir llamadas a IA. Para
-una demo predecible usa un buzón de prueba sin otros mensajes de ese día. La
-recuperación después de desconexiones no garantiza entrega ni reintento completo.
-Si el nodo no logra normalizar o guardar un correo, permanece en Gmail pero no se
-registra automáticamente en BEC Guard. No se reintentan de forma automática los
-análisis fallidos; un error del proveedor deja el correo y el análisis ERROR y se
-puede reintentar desde su detalle en la aplicación.
+Al arrancar el workflow, el receptor toma el UID siguiente de la bandeja como
+punto de partida. Los correos que ya estaban en Gmail mientras el workflow estaba apagado se
+omiten; solo se analizan los que llegan a partir de esa conexión. Esta política
+también se aplica al reiniciar o volver a publicar el workflow. Una desconexión
+IMAP temporal mientras el workflow sigue activo puede recuperar mensajes pendientes.
+La conexión debe
+poder obtener UIDNEXT del servidor IMAP; si no está disponible, falla sin procesar
+la cola. Los mensajes no se marcan como leídos.
+
+La imagen local deriva de n8n 2.44.4 y aplica un ajuste al nodo IMAP exclusivamente
+para este workflow. La construcción falla si cambia la implementación compatible;
+al actualizar n8n hay que revisar el ajuste. Si falla la normalización o ingestión,
+el correo permanece en Gmail, pero no se registra en BEC Guard. Un análisis que
+falla queda en ERROR y puede reintentarse desde su detalle en la aplicación.
 
 Se guarda Message-ID para evitar duplicados; los correos sin Message-ID se rechazan
 para no confundir mensajes de cuentas distintas. El nodo no reconstruye el hilo.
