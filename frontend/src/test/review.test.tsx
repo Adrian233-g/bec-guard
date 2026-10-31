@@ -259,3 +259,29 @@ it('decision dialog cycles focus and closes without resolving', async () => {
     false,
   );
 });
+
+it.each(['ADMIN', 'ANALYST'] as const)(
+  '%s sees the mailbox owner and original email in the alert detail',
+  async (role) => {
+    setup('/alerts/alert-1', role);
+    expect(await screen.findByText('Bilton Novoa')).toBeInTheDocument();
+    expect(screen.getByText('bilton@example.com')).toBeInTheDocument();
+    await screen.findByText(
+      (_, element) =>
+        element?.tagName === 'PRE' && element.textContent === email.body_text,
+    );
+  },
+);
+
+it('employee sees the original email without organization owner metadata', async () => {
+  setup('/alerts/alert-1', 'EMPLOYEE');
+  await screen.findByText(
+    (_, element) =>
+      element?.tagName === 'PRE' && element.textContent === email.body_text,
+  );
+  expect(screen.queryByText('Bilton Novoa')).not.toBeInTheDocument();
+  expect(screen.queryByText('bilton@example.com')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Tomar revisión' }),
+  ).not.toBeInTheDocument();
+});

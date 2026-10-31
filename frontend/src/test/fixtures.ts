@@ -26,6 +26,8 @@ export const alert: AlertDetail = {
   status: 'OPEN',
   assigned_to: null,
   assigned_to_name: null,
+  owner_name: 'Bilton Novoa',
+  mailbox_email: 'bilton@example.com',
   verdict: null,
   resolution: null,
   closed_at: null,
@@ -76,8 +78,6 @@ export const summary = {
   risk_level: 'CRITICAL',
   risk_score: 90,
   bec_type: 'BANK_ACCOUNT_CHANGE',
-  owner_name: 'Bilton Novoa',
-  mailbox_email: 'bilton@example.com',
 };
 export const dashboard: Dashboard = {
   emails_total: 12,

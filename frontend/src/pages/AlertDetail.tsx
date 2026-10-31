@@ -17,6 +17,7 @@ import type { AlertDetail as AlertData, EmailDetail, Verdict } from '../types';
 import { useResource } from '../useResource';
 export function AlertDetail() {
   const { alertId } = useParams();
+  const { user } = useAuth();
   const resource = useResource<AlertData>(`/alerts/${alertId}`);
   const [notice, setNotice] = useState('');
   const alert = resource.data;
@@ -55,6 +56,18 @@ export function AlertDetail() {
                     </p>
                     <small>Recibido {date(email.data.received_at)}</small>
                   </div>
+                )}
+                {user?.role !== 'EMPLOYEE' && (
+                  <dl className="facts">
+                    <div>
+                      <dt>Empleado</dt>
+                      <dd>{alert.owner_name || 'Sin propietario'}</dd>
+                    </div>
+                    <div>
+                      <dt>Buzón</dt>
+                      <dd>{alert.mailbox_email || 'No disponible'}</dd>
+                    </div>
+                  </dl>
                 )}
               </div>
               <div className="overview-status">

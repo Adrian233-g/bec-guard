@@ -202,8 +202,9 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
       filtros confusos para EMPLOYEE, que ya ve solo sus propias alertas.
       Implementado y verificado en la interfaz; requiere actualizar frontend
       para verlo en los contenedores locales.
-- [ ] **4.2. Detalle para investigación:** mostrar claramente el empleado y el
+- [x] **4.2. Detalle para investigación:** mostrar claramente el empleado y el
       buzón en el caso, y comprobar el acceso al correo asociado por rol.
+      Validado con datos simulados; actualizar frontend para verlo localmente.
 - [ ] **4.3. Revisión humana:** comprobar tomar, liberar y cerrar casos, estados,
       permisos y bitácora; corregir los problemas concretos que aparezcan.
 - [ ] **4.4. Avisos:** definir canal y destinatarios, e implementar avisos al

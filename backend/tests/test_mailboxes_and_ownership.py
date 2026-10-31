@@ -239,6 +239,14 @@ def test_alert_investigation_exception_for_analyst_and_admin(api_client, db_sess
     resp_admin = api_client.get(f"/api/emails/{email_suspicious.id}", headers=h_admin)
     assert resp_admin.status_code == 200
 
+    # The case detail follows the same owner/alert exception as the email.
+    for headers in (h_emp, h_analyst, h_admin):
+        detail = api_client.get(f"/api/alerts/{alert.id}", headers=headers)
+        assert detail.status_code == 200
+        assert detail.json()["analysis"]["email_id"] == str(email_suspicious.id)
+    assert api_client.get(f"/api/alerts/{alert.id}", headers=h_other).status_code == 404
+    assert api_client.get(f"/api/emails/{email_suspicious.id}", headers=h_other).status_code == 404
+
     # 3. Alerts queue isolation:
     # Analyst sees the alert in queue, along with mailbox owner info
     resp_queue = api_client.get("/api/alerts", headers=h_analyst)
