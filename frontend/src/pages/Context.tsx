@@ -182,8 +182,9 @@ export function ContextPage({ kind }: { kind: Kind }) {
                   )}
                   <td>
                     <span
-                      className={`badge ${row.is_active ? 'badge-low' : ''}`}
+                      className={`badge ${row.is_active ? 'badge-low' : 'badge-closed'}`}
                     >
+                      <span className="badge-dot" aria-hidden="true" />
                       {row.is_active ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
