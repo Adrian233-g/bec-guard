@@ -13,9 +13,9 @@ Mantenemos intacta la paleta de colores institucional (`#172e3f`, `#126b70`, `#f
   - [x] **1.2 Shell global**: Sidebar con isotipo de escudo estilizado, iconografía SVG por sección, topbar de mando pulida y campana de notificaciones.
   - [x] **1.3 Dashboard (`/`)**: Reemplazo de `.workload` por tarjeta de guardia operativa balanceada, tira de métricas en tarjetas nítidas, barras de riesgo y lista reciente con dot de severidad.
   - [x] **1.4 Login (`/login`)**: Pulido del formulario y panel de bienvenida institucional sin bloques pesados.
-- [ ] **Fase 2: Triage de Alertas y Detalle Forense (`/alerts` y `/alerts/:id`)**
-  - [ ] **2.1 Cola de alertas (`/alerts`)**: Barra de filtros compacta y tabla de triage de alta densidad (padding 11px) con badges y micro-dots de estado.
-  - [ ] **2.2 Detalle de alerta y evidencia (`/alerts/:id`)**: *Signature Move* (desglose visual de reglas, semántica LLM y contexto de identidad), cabeceras de correo forenses y panel de resolución humana.
+- [x] **Fase 2: Triage de Alertas y Detalle Forense (`/alerts` y `/alerts/:id`) [COMPLETADO]**
+  - [x] **2.1 Cola de alertas (`/alerts`)**: Barra de filtros compacta y tabla de triage de alta densidad (padding 11px) con badges y micro-dots de estado.
+  - [x] **2.2 Detalle de alerta y evidencia (`/alerts/:id`)**: *Signature Move* (desglose visual de reglas, semántica LLM y contexto de identidad), cabeceras de correo forenses y panel de resolución humana.
 - [ ] **Fase 3: Exploración de Correos y Evidencia MIME (`/emails` y `/emails/:id`)**
   - [ ] **3.1 Bandeja de correos (`/emails`)**: Tabla optimizada con indicadores de análisis, estado de riesgo y filtros por remitente.
   - [ ] **3.2 Vista de correo y cabeceras (`/emails/:id`)**: Bloque monospace técnico refinado para cabeceras (SPF/DKIM/Message-ID) y visor de cuerpo seguro.
@@ -39,3 +39,5 @@ Mantenemos intacta la paleta de colores institucional (`#172e3f`, `#126b70`, `#f
 | `feat(ui): shell-navigation` | `frontend/src/App.tsx`, `frontend/src/icons.tsx`, `NotificationBell.tsx` | ✅ Completado | Iconos SVG y sidebar/topbar de alta precisión |
 | `feat(ui): dashboard-operate` | `frontend/src/pages/Dashboard.tsx`, `frontend/src/components.tsx` | ✅ Completado | Rediseño de guardia operativa, métricas y badges con micro-dots |
 | `feat(ui): login-polish` | `frontend/src/App.tsx`, `frontend/src/styles.css` | ✅ Completado | Pantalla de acceso alineada al estándar SOC |
+| `feat(ui): alerts-queue` | `frontend/src/pages/Alerts.tsx`, `frontend/src/icons.tsx`, `frontend/src/styles.css` | ✅ Completado | Triage de alertas de alta densidad, filtros organizados y micro-chips |
+| `feat(ui): alert-forensics` | `frontend/src/pages/AlertDetail.tsx`, `frontend/src/analysis.tsx`, `frontend/src/styles.css` | ✅ Completado | Signature Move: Threat Inspector, señales por origen y cabeceras forenses |
