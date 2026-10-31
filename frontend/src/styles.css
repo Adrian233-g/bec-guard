@@ -1300,6 +1300,37 @@ td small {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.message-id-tag {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+  margin-top: 2px;
+}
+
+.associated-alert-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--primary-subtle);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--primary);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.associated-alert-link:hover {
+  background: #e2f1f3;
+  border-color: #9acfd3;
+}
+
 .subject-cell {
   min-width: 240px;
 }

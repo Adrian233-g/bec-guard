@@ -64,16 +64,18 @@ export function Emails() {
                 <tr key={e.id}>
                   <td>{date(e.received_at)}</td>
                   <td>
-                    {e.sender_name}
-                    <small>{e.sender_email}</small>
+                    <div className="sender-name">{e.sender_name}</div>
+                    <small className="mono">{e.sender_email}</small>
                   </td>
                   <td className="subject-cell">
                     <Link to={`/emails/${e.id}`}>
                       {e.subject || '(Sin asunto)'}
                     </Link>
-                    <small>{e.message_id}</small>
+                    <small className="mono message-id-tag">{e.message_id}</small>
                   </td>
-                  <td>{e.reply_to || '—'}</td>
+                  <td>
+                    <span className="mono">{e.reply_to || '—'}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -230,7 +232,12 @@ function AnalysisAlertLink({ analysis }: { analysis: Analysis }) {
   ) : resource.error ? (
     <ErrorState error={resource.error} retry={resource.reload} />
   ) : resource.data?.[0] ? (
-    <Link to={`/alerts/${resource.data[0].id}`}>Abrir alerta asociada</Link>
+    <Link
+      className="associated-alert-link"
+      to={`/alerts/${resource.data[0].id}`}
+    >
+      Abrir alerta asociada
+    </Link>
   ) : (
     <p className="muted">No hay alerta asociada a este análisis.</p>
   );
