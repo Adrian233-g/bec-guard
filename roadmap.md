@@ -193,20 +193,30 @@ mensajes nuevos se guardan bajo el dueño correcto, con separación verificada.
 
 ### 4. Alertas, escalamiento y comunicación
 
-- [ ] Adaptar la cola de alertas al acceso por rol y propietario; mostrar empleado,
-      señales, análisis y correo asociado solo a ADMIN/ANALYST autorizados.
-- [ ] Mantener claim/release/resolve y auditoría con las reglas de la matriz; mostrar
-      al empleado únicamente sus alertas y el estado de revisión.
-- [ ] Diseñar e implementar avisos al empleado y al equipo de seguridad, indicando
-      que el resultado es una sospecha y recomendando verificación independiente.
-      Definir canal, destinatarios y prevención de avisos duplicados antes de enviar.
-- [ ] Evaluar tratamiento visible del riesgo MEDIUM y política >=70 con datos de
-      desarrollo; no cambiar pesos o umbrales solo por un ejemplo de demostración.
-- [ ] Distinguir errores 429/límites de uso de otros errores del proveedor y ofrecer
-      reintento explícito; un fallo no debe convertirse en correo seguro.
+Trabajar cada minitarea por separado, con pruebas simuladas y commit al terminar.
+La cuota restante de Codex no está disponible para el agente: el usuario puede
+consultarla con `/status` y avisar cuando quiera detenerse, por ejemplo al bajar
+al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro.
+
+- [x] **4.1. Cola por rol:** mostrar el dueño del buzón a ADMIN/ANALYST y evitar
+      filtros confusos para EMPLOYEE, que ya ve solo sus propias alertas.
+      Implementado y verificado en la interfaz; requiere actualizar frontend
+      para verlo en los contenedores locales.
+- [ ] **4.2. Detalle para investigación:** mostrar claramente el empleado y el
+      buzón en el caso, y comprobar el acceso al correo asociado por rol.
+- [ ] **4.3. Revisión humana:** comprobar tomar, liberar y cerrar casos, estados,
+      permisos y bitácora; corregir los problemas concretos que aparezcan.
+- [ ] **4.4. Avisos:** definir canal y destinatarios, e implementar avisos al
+      empleado y al equipo de seguridad con prevención de duplicados.
+- [ ] **4.5. Riesgo medio y errores:** evaluar la presentación de MEDIUM y del
+      umbral >=70 sin cambiar la política sin evidencia; distinguir 429 y
+      habilitar reintentos explícitos cuando corresponda.
+- [ ] **4.6. Verificación integrada:** probar con datos simulados el recorrido
+      empleado → alerta → analista → resolución, sin gastar cuota de IA.
 
 **Terminado cuando:** una alerta llega a la cola correcta, el empleado recibe el
 aviso definido y un analista puede investigar y cerrar el caso con trazabilidad.
+La prueba real con Gmail y Groq continúa en la etapa 5.
 
 ### 5. Verificación y demostración
 

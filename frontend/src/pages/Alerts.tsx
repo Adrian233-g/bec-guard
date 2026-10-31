@@ -20,6 +20,7 @@ export function Alerts() {
   const query = new URLSearchParams(params);
   query.set('limit', '25');
   query.set('offset', String(offset));
+  if (user?.role === 'EMPLOYEE') query.delete('assigned_to');
   const resource = useResource<AlertSummary[]>(`/alerts?${query}`);
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
@@ -32,7 +33,11 @@ export function Alerts() {
     <>
       <PageHeader
         title="Alertas"
-        description="Prioriza la evidencia y registra una decisión por caso."
+        description={
+          user?.role === 'EMPLOYEE'
+            ? 'Consulta el estado de las alertas de tus correos.'
+            : 'Prioriza la evidencia y registra una decisión por caso.'
+        }
       />
       <div className="filters">
         <label>
@@ -77,16 +82,18 @@ export function Alerts() {
             ))}
           </select>
         </label>
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={params.get('assigned_to') === user?.id}
-            onChange={(e) =>
-              filter('assigned_to', e.target.checked ? user!.id : '')
-            }
-          />
-          Mis alertas
-        </label>
+        {user?.role !== 'EMPLOYEE' && (
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={params.get('assigned_to') === user?.id}
+              onChange={(e) =>
+                filter('assigned_to', e.target.checked ? user!.id : '')
+              }
+            />
+            Asignadas a mí
+          </label>
+        )}
       </div>
       {resource.loading ? (
         <LoadingState />
@@ -106,6 +113,7 @@ export function Alerts() {
               <tr>
                 <th>Riesgo</th>
                 <th>Correo / remitente</th>
+                {user?.role !== 'EMPLOYEE' && <th>Empleado / buzón</th>}
                 <th>Tipo BEC</th>
                 <th>Estado</th>
                 <th>Responsable</th>
@@ -127,6 +135,12 @@ export function Alerts() {
                     <small>{a.sender_name}</small>
                     <small>{a.sender_email}</small>
                   </td>
+                  {user?.role !== 'EMPLOYEE' && (
+                    <td>
+                      {a.owner_name || 'Sin propietario'}
+                      {a.mailbox_email && <small>{a.mailbox_email}</small>}
+                    </td>
+                  )}
                   <td>{label(a.bec_type)}</td>
                   <td>
                     <Badge value={a.status} />

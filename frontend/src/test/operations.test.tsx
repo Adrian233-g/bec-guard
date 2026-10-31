@@ -301,3 +301,26 @@ it.each([
   setup(path, 'ADMIN', { empty: true });
   await screen.findByText(text);
 });
+
+it.each(['ADMIN', 'ANALYST'] as const)(
+  '%s sees the mailbox owner in the alert queue',
+  async (role) => {
+    setup('/alerts', role);
+    expect(await screen.findByText('Bilton Novoa')).toBeInTheDocument();
+    expect(screen.getByText('bilton@example.com')).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Asignadas a mí' }),
+    ).toBeInTheDocument();
+  },
+);
+
+it('employee sees their own alert queue without an analyst assignment filter', async () => {
+  const fetch = setup('/alerts?assigned_to=user-1', 'EMPLOYEE');
+  await screen.findByText('Cambio de cuenta pendiente');
+  expect(
+    screen.queryByRole('checkbox', { name: 'Asignadas a mí' }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText('Bilton Novoa')).not.toBeInTheDocument();
+  const call = fetch.mock.calls.find(([url]) => url.startsWith('/api/alerts?'));
+  expect(call?.[0]).not.toContain('assigned_to=');
+});

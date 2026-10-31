@@ -114,7 +114,7 @@ it('alert filters request backend filters', async () => {
     screen.getByLabelText('Tipo BEC'),
     'BANK_ACCOUNT_CHANGE',
   );
-  await userEvent.click(screen.getByLabelText('Mis alertas'));
+  await userEvent.click(screen.getByLabelText('Asignadas a mí'));
   await waitFor(() =>
     expect(
       fetch.mock.calls.some(([url]) => url.includes('assigned_to=user-1')),

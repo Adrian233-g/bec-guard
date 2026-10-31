@@ -76,6 +76,8 @@ export const summary = {
   risk_level: 'CRITICAL',
   risk_score: 90,
   bec_type: 'BANK_ACCOUNT_CHANGE',
+  owner_name: 'Bilton Novoa',
+  mailbox_email: 'bilton@example.com',
 };
 export const dashboard: Dashboard = {
   emails_total: 12,
