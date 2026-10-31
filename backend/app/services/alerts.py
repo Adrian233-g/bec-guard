@@ -52,6 +52,8 @@ def review_alert(
     if alert is None:
         raise HTTPException(404, "Alert not found")
     if operation == "resolve" and alert.status == "CLOSED":
+        if actor.role == Role.ANALYST and alert.assigned_to != actor.id:
+            raise HTTPException(403, "Forbidden")
         if payload and alert.verdict == payload.verdict and alert.resolution == payload.resolution:
             return alert
         raise HTTPException(409, "Alert already closed")

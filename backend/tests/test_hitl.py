@@ -55,6 +55,17 @@ def test_full_review_cycle(api_client, db_session, account, review_setup, verdic
     assert row["resolution"] == payload["resolution"].strip()
     assert row["closed_at"].endswith("Z")
     assert api_client.post(endpoint(alert, "resolve"), headers=headers, json=payload).json() == row
+    # An analyst who did not own the review cannot repeat its decision.
+    assert (
+        api_client.post(endpoint(alert, "resolve"), headers=other_headers, json=payload).status_code
+        == 403
+    )
+    other.role = Role.ADMIN
+    db_session.commit()
+    assert (
+        api_client.post(endpoint(alert, "resolve"), headers=other_headers, json=payload).json()
+        == row
+    )
     assert (
         api_client.post(
             endpoint(alert, "resolve"), headers=headers, json={**payload, "resolution": "Changed"}

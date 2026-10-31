@@ -205,8 +205,10 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
 - [x] **4.2. Detalle para investigación:** mostrar claramente el empleado y el
       buzón en el caso, y comprobar el acceso al correo asociado por rol.
       Validado con datos simulados; actualizar frontend para verlo localmente.
-- [ ] **4.3. Revisión humana:** comprobar tomar, liberar y cerrar casos, estados,
+- [x] **4.3. Revisión humana:** comprobar tomar, liberar y cerrar casos, estados,
       permisos y bitácora; corregir los problemas concretos que aparezcan.
+      La repetición de una resolución cerrada también exige ser el analista
+      asignado o ADMIN; validado con pruebas simuladas y PostgreSQL aislado.
 - [ ] **4.4. Avisos:** definir canal y destinatarios, e implementar avisos al
       empleado y al equipo de seguridad con prevención de duplicados.
 - [ ] **4.5. Riesgo medio y errores:** evaluar la presentación de MEDIUM y del
