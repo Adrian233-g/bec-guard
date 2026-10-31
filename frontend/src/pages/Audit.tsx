@@ -116,9 +116,11 @@ function AuditList() {
                   <td>{label(e.actor_role)}</td>
                   <td>
                     {e.resource_type || '—'}
-                    <small>{e.resource_id}</small>
+                    <small className="mono">{e.resource_id}</small>
                   </td>
-                  <td>{e.ip_address || '—'}</td>
+                  <td>
+                    <span className="mono">{e.ip_address || '—'}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>
