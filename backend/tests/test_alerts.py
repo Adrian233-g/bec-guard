@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
-from app.models import AuditLog, BECAlert, EmailAnalysis, Role
+from app.models import AuditLog, BECAlert, EmailAnalysis, Mailbox, Role
 from app.schemas.email import EmailIngestRequest
 from app.services.alerts import ensure_alert_for_analysis
 from app.services.email_ingestion import ingest_email
@@ -73,10 +73,6 @@ def test_alert_reads_and_no_hitl(api_client, db_session, account, alert_setup, r
     account.role = role
     db_session.commit()
     response = api_client.get("/api/alerts", headers=headers)
-    if role == Role.EMPLOYEE:
-        assert response.status_code == 403
-        assert api_client.get(f"/api/alerts/{alert.id}", headers=headers).status_code == 403
-        return
     assert response.status_code == 200
     [summary] = response.json()
     assert summary["email_id"] == str(email.id) and summary["risk_score"] == 70
@@ -106,6 +102,7 @@ def test_alert_pagination(api_client, db_session, account, alert_setup, email_pa
         db_session,
         EmailIngestRequest(**{**email_payload, "message_id": "<page-alert@fixtures.example>"}),
         actor=account,
+        mailbox_id=db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id)),
     )
     row = db_session.get(EmailAnalysis, first.analysis_id)
     fields = {c.name: getattr(row, c.name) for c in EmailAnalysis.__table__.columns}

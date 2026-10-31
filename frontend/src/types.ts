@@ -46,7 +46,7 @@ export interface Mailbox {
   user_id: string;
   email_address: string;
   provider: string;
-  status: 'ACTIVE' | 'DISCONNECTED' | 'ERROR';
+  status: 'PENDING' | 'ACTIVE' | 'DISCONNECTED' | 'ERROR';
   created_at: string;
   updated_at: string;
 }

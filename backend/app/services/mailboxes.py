@@ -26,7 +26,10 @@ def create_mailbox(
 
     normalized_email = normalize_email(email_address)
     existing_email_mailbox = session.scalar(
-        select(Mailbox.id).where(func.lower(Mailbox.email_address) == func.lower(normalized_email))
+        select(Mailbox.id).where(
+            func.lower(Mailbox.email_address) == func.lower(normalized_email),
+            Mailbox.status == "ACTIVE",
+        )
     )
     if existing_email_mailbox is not None:
         raise HTTPException(409, "Email address is already registered as a mailbox")
@@ -35,7 +38,7 @@ def create_mailbox(
         user_id=user_id,
         email_address=normalized_email,
         provider=provider,
-        status="ACTIVE",
+        status="PENDING",
     )
     session.add(mailbox)
     try:
@@ -81,8 +84,12 @@ def update_mailbox_status(
     if mailbox is None:
         raise HTTPException(404, "Mailbox not found")
     if mailbox.user_id != actor.id and actor.role != Role.ADMIN:
-        raise HTTPException(403, "Forbidden")
+        raise HTTPException(404, "Mailbox not found")
 
+    if status not in {"PENDING", "DISCONNECTED"}:
+        raise HTTPException(409, "Mailbox activation requires a verified connection")
+    if mailbox.status == status:
+        return mailbox
     mailbox.status = status
     action = (
         AuditAction.MAILBOX_DISCONNECTED

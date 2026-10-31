@@ -93,9 +93,9 @@ def test_employee_has_no_shared_data_access_until_mailbox_ownership(
     db_session.commit()
     headers = {"Authorization": f"Bearer {create_access_token(account.id, auth_settings)}"}
     assert api_client.get("/api/auth/me", headers=headers).json()["role"] == "EMPLOYEE"
+    assert api_client.get("/api/emails", headers=headers).status_code == 200
+    assert api_client.get("/api/alerts", headers=headers).status_code == 200
     for path in (
-        "/api/emails",
-        "/api/alerts",
         "/api/dashboard/summary",
         "/api/executives",
         "/api/vendors",

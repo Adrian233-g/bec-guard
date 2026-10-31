@@ -43,7 +43,7 @@ def test_mailbox_crud_and_uniqueness(api_client, db_session, auth_settings):
     assert resp.status_code == 201
     data1 = resp.json()
     assert data1["email_address"] == "emp1.inbox@example.com"
-    assert data1["status"] == "ACTIVE"
+    assert data1["status"] == "PENDING"
     mb1_id = UUID(data1["id"])
 
     # 2. User 1 lists mailboxes
@@ -66,14 +66,14 @@ def test_mailbox_crud_and_uniqueness(api_client, db_session, auth_settings):
     assert resp.status_code == 409
     assert "already has a registered mailbox" in resp.text
 
-    # 5. User 2 cannot register the same email address (even with different casing)
+    # 5. A pending, unverified claim cannot reserve an address from another user.
     resp = api_client.post(
         "/api/mailboxes",
         json={"email_address": "EMP1.INBOX@example.com", "provider": "gmail"},
         headers=h2,
     )
-    assert resp.status_code == 409
-    assert "already registered" in resp.text
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "PENDING"
 
     # 6. User 1 disconnects their mailbox
     resp = api_client.patch(
@@ -203,7 +203,7 @@ def test_alert_investigation_exception_for_analyst_and_admin(api_client, db_sess
         risk_score=88,
         risk_level=RiskLevel.CRITICAL,
         bec_type=BECType.EXECUTIVE_IMPERSONATION,
-        signals=[{"id": "URGENCY", "score": 85}],
+        signals=[{"code": "URGENCY", "description": "Urgent request", "source": "SEMANTIC"}],
         summary="Executive impersonation demanding funds",
         recommended_action="Do not transfer funds; contact CEO out of band",
         provider="google",
@@ -275,3 +275,27 @@ def test_alert_investigation_exception_for_analyst_and_admin(api_client, db_sess
     resp_claim = api_client.post(f"/api/alerts/{alert.id}/claim", headers=h_analyst)
     assert resp_claim.status_code == 200
     assert resp_claim.json()["status"] == "UNDER_REVIEW"
+
+
+def test_empty_mailbox_patch_cannot_expose_other_users_metadata(
+    api_client, db_session, auth_settings
+):
+    owner = make_user(db_session, "Owner", "owner-meta@example.com", Role.EMPLOYEE)
+    other = make_user(db_session, "Other", "other-meta@example.com", Role.EMPLOYEE)
+    mailbox = Mailbox(
+        user_id=owner.id, email_address="private@example.com", provider="gmail", status="PENDING"
+    )
+    db_session.add(mailbox)
+    db_session.commit()
+    headers = auth_header(other, auth_settings)
+    for body in ({}, {"status": None}):
+        response = api_client.patch(f"/api/mailboxes/{mailbox.id}", json=body, headers=headers)
+        assert response.status_code == 400
+        assert "private@example.com" not in response.text
+    assert api_client.get(f"/api/mailboxes/{mailbox.id}", headers=headers).status_code == 404
+    assert (
+        api_client.patch(
+            f"/api/mailboxes/{mailbox.id}", json={"status": "DISCONNECTED"}, headers=headers
+        ).status_code
+        == 404
+    )

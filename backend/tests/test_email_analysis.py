@@ -11,7 +11,16 @@ from app.api.email_analysis import get_analyzer_factory
 from app.core.config import LLMSettings
 from app.core.database import create_session_factory
 from app.core.tokens import create_access_token
-from app.models import AuditLog, BECAlert, Email, EmailAnalysis, ExecutiveContact, Role, User
+from app.models import (
+    AuditLog,
+    BECAlert,
+    Email,
+    EmailAnalysis,
+    ExecutiveContact,
+    Mailbox,
+    Role,
+    User,
+)
 from app.schemas.analysis import SemanticAssessment
 from app.schemas.email import EmailIngestRequest
 from app.services.email_analysis import analyze_email, create_semantic_analyzer
@@ -70,6 +79,7 @@ def analysis_setup(api_app, db_session, account, auth_settings, email_payload):
             }
         ),
         actor=account,
+        mailbox_id=db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id)),
     )
     fake = StubAnalyzer()
     api_app.dependency_overrides[get_analyzer_factory] = lambda: lambda: fake
@@ -195,18 +205,12 @@ def test_rbac_current_role_and_activity(api_client, analysis_setup, db_session, 
     account.role = role
     db_session.commit()
     response = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
-    assert response.status_code == (403 if role == Role.EMPLOYEE else 200)
-    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == (
-        403 if role == Role.EMPLOYEE else 200
-    )
-    account.role = Role.ANALYST if role == Role.EMPLOYEE else Role.EMPLOYEE
+    assert response.status_code == 200
+    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == 200
+    account.role = Role.EMPLOYEE if role != Role.EMPLOYEE else Role.ANALYST
     db_session.commit()
-    assert api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).status_code == (
-        200 if role == Role.EMPLOYEE else 403
-    )
-    account.role = Role.EMPLOYEE
-    db_session.commit()
-    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == 403
+    assert api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).status_code == 200
+    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == 200
     assert fake.calls == 1
     account.is_active = False
     db_session.commit()

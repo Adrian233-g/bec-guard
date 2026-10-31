@@ -5,7 +5,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -69,17 +69,13 @@ def seed_demo(session: Session, *, actor: User) -> dict:
             if error.status_code != 409:
                 raise
             counts["vendors"]["existing"] += 1
-    demo_mailbox = session.scalar(
-        select(Mailbox).where(func.lower(Mailbox.email_address) == "tesoreria@oriona-demo.example")
-    )
-    if demo_mailbox is None:
-        demo_mailbox = session.scalar(select(Mailbox).where(Mailbox.user_id == actor.id))
+    demo_mailbox = session.scalar(select(Mailbox).where(Mailbox.user_id == actor.id))
     if demo_mailbox is None:
         demo_mailbox = Mailbox(
             user_id=actor.id,
             email_address="tesoreria@oriona-demo.example",
-            provider="demo",
-            status="ACTIVE",
+            provider="other",
+            status="PENDING",
         )
         session.add(demo_mailbox)
         session.flush()

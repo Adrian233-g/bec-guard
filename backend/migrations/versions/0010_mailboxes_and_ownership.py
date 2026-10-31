@@ -4,10 +4,11 @@ Revision ID: 0010_mailboxes_and_ownership
 Revises: 0009_roles_employee
 """
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
+from email_validator import EmailNotValidError, validate_email
 
 revision = "0010_mailboxes_and_ownership"
 down_revision = "0009_roles_employee"
@@ -67,21 +68,23 @@ def upgrade() -> None:
     bind = op.get_bind()
     has_emails = bind.execute(sa.text("SELECT EXISTS (SELECT 1 FROM public.emails)")).scalar()
     if has_emails:
+        args = context.get_x_argument(as_dictionary=True)
+        try:
+            user_id = UUID(args.get("legacy_owner_id", ""))
+            user_email = validate_email(
+                args.get("legacy_mailbox_address", ""), check_deliverability=False
+            ).normalized.lower()
+        except ValueError, EmailNotValidError:
+            raise RuntimeError(
+                "Existing emails require explicit -x legacy_owner_id and "
+                "-x legacy_mailbox_address; ownership must be confirmed by the operator"
+            ) from None
         user_row = bind.execute(
-            sa.text(
-                "SELECT id, email FROM public.users "
-                "ORDER BY "
-                "  CASE WHEN role = 'EMPLOYEE' THEN 1 WHEN role = 'ADMIN' THEN 2 ELSE 3 END, "
-                "  created_at "
-                "LIMIT 1"
-            )
+            sa.text("SELECT id FROM public.users WHERE id = :id AND is_active = true"),
+            {"id": user_id},
         ).first()
         if not user_row:
-            raise RuntimeError(
-                "Cannot migrate existing emails without an existing user. "
-                "Create an employee or admin first."
-            )
-        user_id, user_email = user_row
+            raise RuntimeError("Explicit legacy owner must be an existing active user")
         mailbox_id = uuid4()
         bind.execute(
             sa.text(

@@ -47,6 +47,7 @@ class AlertVerdict(StrEnum):
 
 
 class MailboxStatus(StrEnum):
+    PENDING = "PENDING"
     ACTIVE = "ACTIVE"
     DISCONNECTED = "DISCONNECTED"
     ERROR = "ERROR"

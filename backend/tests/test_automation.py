@@ -10,16 +10,19 @@ from app.api.dependencies import get_automation_settings
 from app.api.email_analysis import get_analyzer_factory
 from app.core.config import AutomationSettings
 from app.core.tokens import create_access_token
-from app.models import AuditLog, BECAlert, Email, EmailAnalysis, ExecutiveContact
+from app.models import AuditLog, BECAlert, Email, EmailAnalysis, ExecutiveContact, Mailbox
 from app.services.semantic_analysis import LLMErrorCode
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-def automation_setup(api_app, analysis_stub, db_session, email_payload):
+def automation_setup(api_app, analysis_stub, db_session, email_payload, account):
     key = secrets.token_urlsafe(48)
-    settings = AutomationSettings(_env_file=None, automation_api_key=key)
+    mailbox_id = db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id))
+    settings = AutomationSettings(
+        _env_file=None, automation_api_key=key, automation_mailbox_id=str(mailbox_id)
+    )
     api_app.dependency_overrides[get_automation_settings] = lambda: settings
     api_app.dependency_overrides[get_analyzer_factory] = lambda: lambda: analysis_stub
     db_session.add(ExecutiveContact(name="Ana Pérez", position="CEO", email="ana@empresa.example"))
@@ -324,3 +327,131 @@ def test_automation_alert_audit_failure_is_atomic(
                 text("DROP TRIGGER reject_test_automation_alert ON public.audit_log")
             )
             connection.execute(text("DROP FUNCTION public.reject_test_automation_alert()"))
+
+
+def test_connector_ignores_recipient_headers_and_rejects_mailbox_override(
+    api_client, automation_setup, db_session, account, auth_settings
+):
+    from app.models import Role, User
+
+    headers, payload = automation_setup
+    attacker = User(
+        name="Other", email="other@example.com", password_hash="test", role=Role.EMPLOYEE
+    )
+    db_session.add(attacker)
+    db_session.commit()
+    token = {"Authorization": f"Bearer {create_access_token(attacker.id, auth_settings)}"}
+    registered = api_client.post(
+        "/api/mailboxes",
+        json={"email_address": "claimed@example.com", "provider": "gmail"},
+        headers=token,
+    )
+    assert registered.status_code == 201
+    assert registered.json()["status"] == "PENDING"
+    claimed_id = registered.json()["id"]
+    assert (
+        api_client.patch(
+            f"/api/mailboxes/{claimed_id}", json={"status": "ACTIVE"}, headers=token
+        ).status_code
+        == 409
+    )
+    assert (
+        api_client.post(
+            "/api/automation/emails", json={**payload, "mailbox_id": claimed_id}, headers=headers
+        ).status_code
+        == 400
+    )
+    assert (
+        api_client.post(
+            f"/api/automation/emails?mailbox_id={claimed_id}", json=payload, headers=headers
+        ).status_code
+        == 400
+    )
+    response = api_client.post(
+        "/api/automation/emails",
+        json={**payload, "to_recipients": ["claimed@example.com"]},
+        headers=headers,
+    )
+    assert response.status_code == 201
+    assert response.json()["email"]["mailbox_id"] != claimed_id
+    assert (
+        api_client.get(f"/api/emails/{response.json()['email']['id']}", headers=token).status_code
+        == 404
+    )
+    own_token = {"Authorization": f"Bearer {create_access_token(account.id, auth_settings)}"}
+    assert (
+        api_client.get(
+            f"/api/emails/{response.json()['email']['id']}", headers=own_token
+        ).status_code
+        == 200
+    )
+
+
+def test_connector_fails_closed_if_bound_mailbox_disconnected(
+    api_client, automation_setup, db_session, account
+):
+    from app.models import Role, User
+
+    headers, payload = automation_setup
+    bound = db_session.scalar(select(Mailbox).where(Mailbox.user_id == account.id))
+    bound.status = "DISCONNECTED"
+    other = User(name="Other", email="other2@example.com", password_hash="test", role=Role.EMPLOYEE)
+    db_session.add(other)
+    db_session.flush()
+    db_session.add(
+        Mailbox(
+            user_id=other.id, email_address="other2@example.com", provider="gmail", status="ACTIVE"
+        )
+    )
+    db_session.commit()
+    assert (
+        api_client.post("/api/automation/emails", json=payload, headers=headers).status_code == 503
+    )
+    assert db_session.scalar(select(func.count()).select_from(Email)) == 0
+
+
+def test_connector_cannot_analyze_another_mailbox(
+    api_client, automation_setup, db_session, analysis_stub
+):
+    from datetime import UTC, datetime
+
+    from app.models import Role, User
+
+    headers, _ = automation_setup
+    other = User(name="Other", email="other3@example.com", password_hash="test", role=Role.EMPLOYEE)
+    db_session.add(other)
+    db_session.flush()
+    mailbox = Mailbox(
+        user_id=other.id, email_address="other3@example.com", provider="gmail", status="ACTIVE"
+    )
+    db_session.add(mailbox)
+    db_session.flush()
+    email = Email(
+        mailbox_id=mailbox.id,
+        message_id="<other@example.com>",
+        sender_email="s@example.com",
+        to_recipients=[],
+        cc_recipients=[],
+        subject="Private",
+        body_text="Private",
+        received_at=datetime.now(UTC),
+    )
+    db_session.add(email)
+    db_session.commit()
+    assert (
+        api_client.post(f"/api/automation/emails/{email.id}/analyze", headers=headers).status_code
+        == 404
+    )
+    assert analysis_stub.calls == 0
+
+
+def test_connector_requires_server_mailbox_configuration(api_app, api_client, email_payload):
+    key = secrets.token_urlsafe(48)
+    api_app.dependency_overrides[get_automation_settings] = lambda: AutomationSettings(
+        _env_file=None, automation_api_key=key, automation_mailbox_id=""
+    )
+    response = api_client.post(
+        "/api/automation/emails", json=email_payload, headers={"X-BEC-Automation-Key": key}
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Automation mailbox not configured"

@@ -7,7 +7,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.core.tokens import create_access_token
-from app.models import AuditLog, Email, Role, User
+from app.models import AuditLog, Email, Mailbox, Role, User
 from app.schemas.email import EmailIngestRequest
 from app.services.audit import AuditAction
 from app.services.email_ingestion import ingest_email
@@ -31,13 +31,18 @@ def test_email_persistence_summaries_and_audit(
     stored = db_session.get(Email, resource_id)
     normalized = EmailIngestRequest(**email_payload)
     for field, expected in normalized.model_dump().items():
-        assert getattr(stored, field) == expected
+        if field != "mailbox_id":
+            assert getattr(stored, field) == expected
+    assert stored.mailbox_id == db_session.scalar(
+        select(Mailbox.id).where(Mailbox.user_id == account.id)
+    )
     assert stored.ingested_at.utcoffset() == timedelta(0)
     assert stored.received_at == datetime(2026, 10, 20, 14, 30, tzinfo=UTC)
     assert api_client.get(f"/api/emails/{resource_id}", headers=email_headers).json() == detail
     summary = api_client.get("/api/emails", headers=email_headers).json()[0]
     assert set(summary) == {
         "id",
+        "mailbox_id",
         "message_id",
         "sender_name",
         "sender_email",
@@ -64,7 +69,7 @@ def test_duplicate_message_id_and_case_identity(
     assert first.status_code == 201
     response = api_client.post("/api/emails", json=email_payload, headers=email_headers)
     assert response.status_code == 409
-    assert response.json() == {"detail": "Message-ID already exists"}
+    assert response.json() == {"detail": "Message-ID already exists for this mailbox"}
     # Message-ID identity is NOT case-folded like email addresses.
     variant = {**email_payload, "message_id": email_payload["message_id"].lower()}
     assert api_client.post("/api/emails", json=variant, headers=email_headers).status_code == 201
@@ -74,12 +79,13 @@ def test_duplicate_message_id_and_case_identity(
 
 def test_database_rejects_duplicate_message_id(db_session, account, email_payload):
     normalized = EmailIngestRequest(**email_payload)
-    ingest_email(db_session, normalized, actor=account)
-    db_session.add(Email(**normalized.model_dump()))
+    mailbox_id = db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id))
+    ingest_email(db_session, normalized, mailbox_id=mailbox_id, actor=account)
+    db_session.add(Email(**{**normalized.model_dump(), "mailbox_id": mailbox_id}))
     with pytest.raises(IntegrityError) as error:
         db_session.commit()
     assert error.value.orig.sqlstate == "23505"
-    assert error.value.orig.diag.constraint_name == "uq_emails_message_id"
+    assert error.value.orig.diag.constraint_name == "uq_emails_mailbox_message_id"
     db_session.rollback()
 
 
@@ -109,6 +115,7 @@ def test_pagination_order_and_missing(
                 }
             ),
             actor=account,
+            mailbox_id=db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id)),
         )
     rows = api_client.get("/api/emails", headers=email_headers).json()
     assert rows[0]["received_at"] == rows[1]["received_at"]
@@ -127,25 +134,20 @@ def test_pagination_order_and_missing(
 def test_email_rbac_uses_current_database_role(
     api_client, account, db_session, email_headers, email_payload, role
 ):
-    original = ingest_email(db_session, EmailIngestRequest(**email_payload), actor=account)
+    mailbox_id = db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id))
+    original = ingest_email(
+        db_session, EmailIngestRequest(**email_payload), mailbox_id=mailbox_id, actor=account
+    )
     account.role = role
     db_session.commit()
-    expected_read = 403 if role == Role.EMPLOYEE else 200
-    assert api_client.get("/api/emails", headers=email_headers).status_code == expected_read
-    assert (
-        api_client.get(f"/api/emails/{original.id}", headers=email_headers).status_code
-        == expected_read
-    )
+    assert api_client.get("/api/emails", headers=email_headers).status_code == 200
+    assert api_client.get(f"/api/emails/{original.id}", headers=email_headers).status_code == 200
     body = {**email_payload, "message_id": "<role-1@fixtures.example>"}
-    assert api_client.post("/api/emails", json=body, headers=email_headers).status_code == (
-        403 if role == Role.EMPLOYEE else 201
-    )
+    assert api_client.post("/api/emails", json=body, headers=email_headers).status_code == 201
     account.role = Role.ANALYST if role == Role.EMPLOYEE else Role.EMPLOYEE
     db_session.commit()
     body["message_id"] = "<role-2@fixtures.example>"
-    assert api_client.post("/api/emails", json=body, headers=email_headers).status_code == (
-        201 if role == Role.EMPLOYEE else 403
-    )
+    assert api_client.post("/api/emails", json=body, headers=email_headers).status_code == 201
     account.is_active = False
     db_session.commit()
     assert api_client.get("/api/emails", headers=email_headers).status_code == 401
@@ -181,10 +183,15 @@ def test_invalid_requests_do_not_echo_email_contents(
     assert email_payload["subject"] not in response.text + caplog.text
 
 
-def test_audit_failure_rolls_back_email(db_session, email_payload):
+def test_audit_failure_rolls_back_email(db_session, email_payload, account):
     missing_actor = User(id=uuid4(), role=Role.ADMIN)
     with pytest.raises(IntegrityError) as error:
-        ingest_email(db_session, EmailIngestRequest(**email_payload), actor=missing_actor)
+        ingest_email(
+            db_session,
+            EmailIngestRequest(**email_payload),
+            mailbox_id=db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id)),
+            actor=missing_actor,
+        )
     assert error.value.orig.sqlstate == "23503"
     assert db_session.scalar(select(func.count()).select_from(Email)) == 0
     assert db_session.scalar(select(func.count()).select_from(AuditLog)) == 0

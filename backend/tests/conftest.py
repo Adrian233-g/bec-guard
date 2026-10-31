@@ -7,7 +7,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, create_engine, inspect, text
+from sqlalchemy import Engine, create_engine, inspect, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,7 @@ from app.core.config import AuthSettings, LLMSettings, Settings
 from app.core.database import create_session_factory, get_session
 from app.core.passwords import hash_password
 from app.main import create_app
-from app.models import Role, User
+from app.models import Mailbox, Role, User
 from app.schemas.analysis import SemanticAssessment
 from app.services.semantic_analysis import SemanticAnalysisError
 
@@ -56,8 +56,12 @@ def test_engine() -> Iterator[Engine]:
 
 @pytest.fixture(scope="session")
 def migration_runner(test_engine):
-    def run(operation, revision=None):
+    def run(operation, revision=None, *, x_args=None):
+        from argparse import Namespace
+
         config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        if x_args is not None:
+            config.cmd_opts = Namespace(x=x_args)
         with test_engine.begin() as connection:
             config.attributes["connection"] = connection
             if revision is None:
@@ -138,6 +142,8 @@ def account(db_session):
     )
     db_session.add(user)
     db_session.commit()
+    db_session.add(Mailbox(user_id=user.id, email_address=user.email, status="ACTIVE"))
+    db_session.commit()
     return user
 
 
@@ -202,7 +208,10 @@ def alert_setup(db_session, account, email_payload, auth_settings, api_app, anal
     from app.services.email_ingestion import ingest_email
     from app.services.hybrid_scoring import risk_level
 
-    email = ingest_email(db_session, EmailIngestRequest(**email_payload), actor=account)
+    mailbox_id = db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id))
+    email = ingest_email(
+        db_session, EmailIngestRequest(**email_payload), mailbox_id=mailbox_id, actor=account
+    )
     api_app.dependency_overrides[get_analyzer_factory] = lambda: lambda: analysis_stub
     headers = {"Authorization": f"Bearer {create_access_token(account.id, auth_settings)}"}
 

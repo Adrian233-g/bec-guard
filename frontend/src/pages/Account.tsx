@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiError, message } from '../api';
-import { Badge, LoadingState, PageHeader } from '../components';
+import { Badge, ErrorState, LoadingState, PageHeader } from '../components';
 import type { Mailbox } from '../types';
 import { useResource } from '../useResource';
 
@@ -65,7 +65,9 @@ export function Account() {
         body: JSON.stringify({ email_address: email, provider: 'gmail' }),
       });
       form.reset();
-      setMailboxNotice('Buzón registrado y conectado.');
+      setMailboxNotice(
+        'Dirección registrada. La conexión de Gmail aún está pendiente.',
+      );
       mailboxResource.reload();
     } catch (e) {
       setMailboxError(
@@ -73,28 +75,6 @@ export function Account() {
           ? 'La dirección ya está registrada o ya posees un buzón activo.'
           : message(e),
       );
-    } finally {
-      setMailboxBusy(false);
-    }
-  }
-
-  async function toggleMailboxStatus() {
-    if (!mailbox) return;
-    setMailboxBusy(true);
-    setMailboxError('');
-    setMailboxNotice('');
-    const nextStatus = mailbox.status === 'ACTIVE' ? 'DISCONNECTED' : 'ACTIVE';
-    try {
-      await api<Mailbox>(`/mailboxes/${mailbox.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      setMailboxNotice(
-        nextStatus === 'ACTIVE' ? 'Buzón activado.' : 'Buzón desconectado.',
-      );
-      mailboxResource.reload();
-    } catch (e) {
-      setMailboxError(message(e));
     } finally {
       setMailboxBusy(false);
     }
@@ -120,8 +100,8 @@ export function Account() {
       <section className="panel" aria-labelledby="mailbox-heading">
         <h2 id="mailbox-heading">Buzón personal</h2>
         <p className="muted">
-          Conecta la dirección de correo corporativa o personal que será
-          protegida por BEC Guard.
+          Registra tu dirección. La verificación y conexión de Gmail estarán
+          disponibles en una próxima etapa.
         </p>
 
         {mailboxNotice && (
@@ -137,6 +117,11 @@ export function Account() {
 
         {mailboxResource.loading ? (
           <LoadingState />
+        ) : mailboxResource.error ? (
+          <ErrorState
+            error={mailboxResource.error}
+            retry={mailboxResource.reload}
+          />
         ) : mailbox ? (
           <div className="mailbox-card">
             <dl className="facts">
@@ -151,24 +136,16 @@ export function Account() {
                 <dd>{mailbox.provider.toUpperCase()}</dd>
               </div>
               <div>
-                <dt>Estado de conexión</dt>
+                <dt>Estado del registro</dt>
                 <dd>
                   <Badge value={mailbox.status} />
                 </dd>
               </div>
             </dl>
-            <div style={{ marginTop: '1rem' }}>
-              <button
-                type="button"
-                className="secondary"
-                disabled={mailboxBusy}
-                onClick={() => void toggleMailboxStatus()}
-              >
-                {mailbox.status === 'ACTIVE'
-                  ? 'Desconectar buzón'
-                  : 'Reactivar buzón'}
-              </button>
-            </div>
+            <p className="muted">
+              La conexión individual de Gmail aún no está disponible desde esta
+              pantalla.
+            </p>
           </div>
         ) : (
           <form onSubmit={(e) => void submitMailbox(e)}>
@@ -183,7 +160,7 @@ export function Account() {
               required
               maxLength={320}
             />
-            <button disabled={mailboxBusy}>Conectar buzón</button>
+            <button disabled={mailboxBusy}>Registrar dirección</button>
           </form>
         )}
       </section>

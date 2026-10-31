@@ -9,12 +9,14 @@ ERROR. Solo el webhook recibe respuesta HTTP. No hay SMTP ni notificaciones.
 
 En `.env` local ignorado, configurar AUTOMATION_API_KEY aleatoria de al menos
 32 caracteres (la misma para backend y n8n). No escribirla en el workflow.
+Configurar también `AUTOMATION_MAILBOX_ID` en el backend para vincular la clave
+a un único buzón activo; ver [propiedad y migración](../docs/mailbox-security.md).
 `BEC_GUARD_BACKEND_URL` tiene default `http://backend:8000`, accesible dentro de
 la red Compose; nunca usar localhost para conectar esos contenedores.
 
 ```bash
 docker compose up --build -d --wait backend n8n
-docker compose exec backend alembic upgrade head
+docker compose exec backend alembic upgrade head # Solo en bases nuevas sin correos
 docker compose exec -T n8n node /opt/bec-guard-n8n/import-workflow.mjs --publish
 docker compose restart n8n
 docker compose up -d --wait n8n

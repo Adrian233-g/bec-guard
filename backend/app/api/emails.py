@@ -22,7 +22,7 @@ Writer = AnyUser
 def create_email(body: EmailIngestRequest, session: Database, actor: AnyUser, request: Request):
     if body.mailbox_id is not None:
         mailbox = session.get(Mailbox, body.mailbox_id)
-        if mailbox is None or mailbox.user_id != actor.id:
+        if mailbox is None or mailbox.user_id != actor.id or mailbox.status != "ACTIVE":
             raise HTTPException(403, "Cannot ingest into a mailbox you do not own")
         target_mailbox_id = body.mailbox_id
     else:

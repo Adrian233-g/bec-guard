@@ -126,8 +126,12 @@ it('employee can register a mailbox in account', async () => {
     await screen.findByLabelText('Dirección de correo electrónico'),
     'emp@example.com',
   );
-  await userEvent.click(screen.getByRole('button', { name: 'Conectar buzón' }));
-  await screen.findByText('Buzón registrado y conectado.');
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Registrar dirección' }),
+  );
+  await screen.findByText(
+    'Dirección registrada. La conexión de Gmail aún está pendiente.',
+  );
   expect(
     fetch.mock.calls.some(
       ([url, init]) =>

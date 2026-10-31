@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Uuid, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.core.identity import normalize_email
@@ -17,7 +17,7 @@ class Mailbox(Base):
     )
     email_address: Mapped[str] = mapped_column(String(320), nullable=False)
     provider: Mapped[str] = mapped_column(String(32), nullable=False, server_default="gmail")
-    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="ACTIVE")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="PENDING")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -26,9 +26,14 @@ class Mailbox(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("status IN ('ACTIVE', 'DISCONNECTED', 'ERROR')", name="status"),
+        CheckConstraint("status IN ('PENDING', 'ACTIVE', 'DISCONNECTED', 'ERROR')", name="status"),
         CheckConstraint("provider IN ('gmail', 'imap', 'other')", name="provider"),
-        Index("uq_mailboxes_email_lower", func.lower(email_address), unique=True),
+        Index(
+            "uq_mailboxes_email_lower",
+            func.lower(email_address),
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE'"),
+        ),
         Index("uq_mailboxes_user_id", user_id, unique=True),
     )
 

@@ -19,6 +19,10 @@ export const labels: Record<string, string> = {
   ADMIN: 'Administrador',
   MANAGER: 'Supervisor (histórico)',
   EMPLOYEE: 'Empleado',
+  PENDING: 'Pendiente de verificación',
+  ACTIVE: 'Activo',
+  DISCONNECTED: 'Desconectado',
+  ERROR: 'Error',
   ANALYST: 'Analista',
   AUDITOR: 'Auditor (histórico)',
 };

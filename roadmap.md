@@ -100,7 +100,7 @@ combinan sin conceder acceso a otros correos normales.
 - [x] Rol EMPLOYEE con acceso provisional restringido hasta implementar propiedad.
 - [x] Gestión de usuarios por ADMIN y cambio de contraseña por cada usuario en el
       código; reconstruir los contenedores locales para usar esta funcionalidad.
-- [x] Permisos por dueño de buzón y aislamiento multiusuario implementados (revisión 0010).
+- [x] Permisos por dueño de buzón y aislamiento multiusuario implementados en código (revisiones 0010 y 0011; aún no aplicadas a la base local).
 - [x] Asociación explícita usuario → buzón → correo con unicidad (mailbox_id, message_id).
 - [ ] Conexión individual de Gmail desde la aplicación y múltiples receptores.
 - [ ] Notificaciones automáticas a empleados/seguridad: la cola en la app no es
@@ -135,16 +135,19 @@ usar SQL manual, y los permisos de cada rol se verifican en el servidor.
 - [x] Actualizar el modelo de idempotencia: Message-ID único por buzón
       (uq_emails_mailbox_message_id). Cada dueño tiene acceso a su propia recepción
       sin filtraciones ni colisiones.
-- [x] Adaptar la API de automatización para asociar cada entrada al buzón correcto
-      mediante identidad confiable y autorización acotada; evitar suplantar dueños.
-- [x] Diseñar una migración para la cuenta Gmail y los correos de prueba actuales.
-      Identifica al usuario dueño (EMPLOYEE o ADMIN) sin inventar un propietario ni
-      borrar datos existentes.
+- [x] Restringir la automatización actual a un único buzón configurado en el servidor.
+      La identidad independiente para varios conectores queda pendiente en la etapa 3.
+- [x] Diseñar una migración que exige confirmar explícitamente el dueño y dirección
+      de los correos anteriores, sin inventarlos. Falta confirmar y aplicar en la base local.
 - [x] Probar al menos dos empleados con buzones distintos, el mismo Message-ID en
       ambos y acceso cruzado denegado; verificar la excepción para alertas reales.
 
 **Terminado cuando:** ningún usuario puede leer el correo normal de otro por API o
 interfaz, y el equipo de análisis puede abrir el correo vinculado a una alerta.
+
+El registro de una dirección queda pendiente y no equivale a una conexión verificada.
+La migración y el conector existente requieren configuración explícita: ver
+[seguridad de buzones](docs/mailbox-security.md).
 
 ### 3. Conectar Gmail desde BEC Guard
 

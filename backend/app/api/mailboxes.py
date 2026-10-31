@@ -55,11 +55,6 @@ def update_single_mailbox(
     actor: CurrentUser,
     request: Request,
 ):
-    if body.status is None:
-        mailbox = get_mailbox(session, mailbox_id)
-        if mailbox is None:
-            raise HTTPException(404, "Mailbox not found")
-        return mailbox
     status_val = body.status.value if hasattr(body.status, "value") else str(body.status)
     return update_mailbox_status(
         session,

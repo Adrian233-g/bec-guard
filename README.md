@@ -102,6 +102,7 @@ hasta que se solicite un análisis semántico.
 | GENERIC_TIMEZONE | Zona horaria de n8n; por defecto America/Lima. |
 | JWT_SECRET_KEY | Obligatoria para la API, sin valor predeterminado; solo en `.env`/entorno. |
 | JWT_ACCESS_TOKEN_MINUTES / JWT_ALGORITHM | Expiración de acceso (30 minutos por defecto) y HS256. |
+| AUTOMATION_MAILBOX_ID | UUID del único buzón activo vinculado al conector n8n actual; ver [migración y seguridad](docs/mailbox-security.md). |
 | AUTOMATION_API_KEY | Key aleatoria >=32 caracteres, solo para automatización backend y webhook n8n. Opcional al arrancar; nunca al frontend. |
 | BEC_GUARD_BACKEND_URL | URL interna usada al importar el workflow, default http://backend:8000. |
 | LLM_PROVIDER / LLM_MODEL | openai, google (alias gemini) o groq; modelo con JSON Schema nativo. |
@@ -119,9 +120,11 @@ para validar usa `--quiet`.
 ```bash
 docker compose config --quiet
 docker compose up --build -d --wait --wait-timeout 180
-docker compose exec backend alembic upgrade head
+docker compose exec backend alembic upgrade head  # Solo para una base nueva sin correos
 docker compose ps
 ```
+
+Si ya existen correos de una instalación anterior, **no ejecutes la migración genérica**: sigue [propiedad y migración de buzones](docs/mailbox-security.md), que exige confirmar su propietario.
 
 La primera ejecución descarga imágenes, instala dependencias y deja que n8n cree
 sus tablas internas. En ejecuciones posteriores basta `docker compose up -d`.
@@ -231,13 +234,15 @@ Consulta los [contratos y ejemplos curl](docs/authentication.md#contratos-http).
 
 ## Migraciones
 
-Desde `backend/`, usando la configuración de `.env` de la raíz:
+Para bases nuevas sin correos, desde `backend/` y usando la configuración de `.env` de la raíz:
 
 ```bash
 uv run alembic upgrade head
 uv run alembic current
 uv run alembic check
 ```
+
+Si ya existen correos, consulta primero [propiedad y migración de buzones](docs/mailbox-security.md).
 
 Para crear una revisión: `uv run alembic revision --autogenerate -m "describe change"`.
 Revisa el archivo generado antes de aplicarlo. Para revertir la última revisión:
@@ -270,8 +275,8 @@ uv run python -m app.scripts.validate_dataset
 ## Analizar un Email existente
 
 Configura LLM_PROVIDER, LLM_MODEL y la key del proveedor elegido en `.env` o entorno
-del backend. Después de reconstruir backend, aplica `alembic upgrade head`.
-ADMIN/ANALYST pueden ejecutar:
+del backend. Después de reconstruir backend, aplica las migraciones según la
+[guía de buzones](docs/mailbox-security.md). Cada dueño puede ejecutar:
 
 ```bash
 curl -X POST 'http://localhost:8000/api/emails/<EMAIL_UUID>/analyze' \
@@ -280,7 +285,7 @@ curl 'http://localhost:8000/api/emails/<EMAIL_UUID>/analysis' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>'
 ```
 
-ADMIN y ANALYST leen el resultado. COMPLETED se reutiliza sin otra
+El dueño y, si hay una alerta, ADMIN o ANALYST pueden leer el resultado. COMPLETED se reutiliza sin otra
 llamada; ERROR se reintenta con el mismo POST y UUID del análisis. Los fallos LLM
 se persisten como ERROR con riesgo null y HTTP 502 (503 sin configuración), nunca
 LOW. Un COMPLETED >=70 crea una BECAlert OPEN con verdict null, sin ejecutar la
@@ -290,7 +295,8 @@ roles autenticados. Claim/release/resolve implementan HITL, sin PATCH/DELETE.
 ## Orquestar con n8n
 
 Configura una AUTOMATION_API_KEY aleatoria >=32 caracteres en `.env`, sin imprimirla
-ni versionarla. Backend y n8n reciben la misma key. Sigue la [guía n8n](n8n/README.md)
+ni versionarla. Backend y n8n reciben la misma key. Vincula el backend a un buzón
+activo mediante `AUTOMATION_MAILBOX_ID`. Sigue la [guía n8n](n8n/README.md)
 para importar/publicar el workflow y llamar a `/webhook/bec-guard/analyze` con
 EmailIngestRequest y header X-BEC-Automation-Key. Devuelve ALERT, NO_ALERT o ERROR.
 

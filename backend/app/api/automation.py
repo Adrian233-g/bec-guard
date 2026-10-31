@@ -3,12 +3,13 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import func, select
+from sqlalchemy import select
 
-from app.api.dependencies import require_automation_key
+from app.api.dependencies import get_automation_settings, require_automation_key
 from app.api.email_analysis import get_analyzer_factory
 from app.api.emails import Database
-from app.models import BECAlert, Mailbox
+from app.core.config import AutomationSettings
+from app.models import BECAlert, Email, Mailbox, User
 from app.models.enums import AnalysisStatus
 from app.schemas.automation import AutomationAnalysisResponse, AutomationIngestResponse
 from app.schemas.email import EmailIngestRequest
@@ -21,6 +22,21 @@ router = APIRouter(
     tags=["n8n automation"],
     dependencies=[Depends(require_automation_key)],
 )
+Settings = Annotated[AutomationSettings, Depends(get_automation_settings)]
+
+
+def _trusted_mailbox(session: Database, settings: AutomationSettings) -> Mailbox:
+    # This key is scoped server-side to ONE explicitly configured mailbox. The
+    # email headers, payload and query parameters never choose its owner.
+    try:
+        mailbox_id = UUID(settings.automation_mailbox_id.strip())
+    except ValueError, AttributeError:
+        raise HTTPException(503, "Automation mailbox not configured") from None
+    mailbox = session.get(Mailbox, mailbox_id)
+    owner = session.get(User, mailbox.user_id) if mailbox else None
+    if not mailbox or mailbox.status != "ACTIVE" or not owner or not owner.is_active:
+        raise HTTPException(503, "Automation mailbox unavailable")
+    return mailbox
 
 
 @router.post(
@@ -33,37 +49,16 @@ def ingest(
     session: Database,
     request: Request,
     response: Response,
+    settings: Settings,
     mailbox_id: Annotated[UUID | None, Query()] = None,
 ):
-    target_mailbox_id = mailbox_id or body.mailbox_id
-    if target_mailbox_id is not None:
-        mailbox = session.get(Mailbox, target_mailbox_id)
-        if mailbox is None or mailbox.status != "ACTIVE":
-            raise HTTPException(404, "Mailbox not found or inactive")
-        target_mailbox_id = mailbox.id
-    else:
-        if body.to_recipients:
-            normalized_to = [r.strip().lower() for r in body.to_recipients]
-            target_mailbox_id = session.scalar(
-                select(Mailbox.id).where(
-                    func.lower(Mailbox.email_address).in_(normalized_to),
-                    Mailbox.status == "ACTIVE",
-                )
-            )
-        if target_mailbox_id is None:
-            active_mailboxes = list(
-                session.scalars(select(Mailbox.id).where(Mailbox.status == "ACTIVE").limit(2))
-            )
-            if len(active_mailboxes) == 1:
-                target_mailbox_id = active_mailboxes[0]
-
-        if target_mailbox_id is None:
-            raise HTTPException(422, "No active mailbox matches recipient")
-
+    if mailbox_id is not None or body.mailbox_id is not None:
+        raise HTTPException(400, "Mailbox is determined by the connector configuration")
+    mailbox = _trusted_mailbox(session, settings)
     email, created = ingest_email_idempotently(
         session,
         body,
-        mailbox_id=target_mailbox_id,
+        mailbox_id=mailbox.id,
         peer=request.client.host if request.client else None,
     )
     response.status_code = 201 if created else 200
@@ -83,8 +78,13 @@ def analyze(
     session: Database,
     request: Request,
     response: Response,
+    settings: Settings,
     analyzer_factory: Annotated[Callable[[], SemanticAnalyzer], Depends(get_analyzer_factory)],
 ):
+    mailbox = _trusted_mailbox(session, settings)
+    email = session.get(Email, email_id)
+    if email is None or email.mailbox_id != mailbox.id:
+        raise HTTPException(404, "Email not found")
     analysis = analyze_email(
         session,
         email_id,
