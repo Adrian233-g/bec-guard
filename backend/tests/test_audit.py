@@ -25,7 +25,7 @@ def test_bootstrap_event_is_atomic_and_contains_snapshot(db_session):
     [event] = events(db_session)
     assert event.action == AuditAction.ADMIN_BOOTSTRAPPED
     assert event.actor_user_id == admin.id
-    assert event.actor_role is Role.ADMIN
+    assert event.actor_role == Role.ADMIN
     assert event.resource_id == admin.id
     assert event.details is None
     assert isinstance(event.id, UUID)

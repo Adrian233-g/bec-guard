@@ -20,8 +20,8 @@ from app.services.organizational_context import create_context, update_context
 
 router = APIRouter(prefix="/api", tags=["Organizational context"])
 Database = Annotated[Session, Depends(get_session)]
-Reader = Annotated[User, Depends(require_roles(*Role))]
-Writer = Annotated[User, Depends(require_roles(Role.ADMIN, Role.MANAGER))]
+Reader = Annotated[User, Depends(require_roles(Role.ADMIN, Role.ANALYST))]
+Writer = Annotated[User, Depends(require_roles(Role.ADMIN))]
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
 

@@ -19,14 +19,14 @@ pytestmark = pytest.mark.integration
 def protected_client(api_app):
     # This route exists only in the test app, never in the production router.
     @api_app.get("/test/protected")
-    def protected(user: Annotated[User, Depends(require_roles(Role.ADMIN, Role.MANAGER))]):
+    def protected(user: Annotated[User, Depends(require_roles(Role.ADMIN))]):
         return {"role": user.role}
 
     with TestClient(api_app) as client:
         yield client
 
 
-@pytest.mark.parametrize("role", [Role.ADMIN, Role.MANAGER])
+@pytest.mark.parametrize("role", [Role.ADMIN])
 def test_permitted_role(protected_client, account, db_session, auth_settings, role):
     account.role = role
     db_session.commit()
@@ -42,7 +42,7 @@ def test_forbidden_role(protected_client, account, auth_settings, db_session):
     assert response.status_code == 403
     event = db_session.scalar(select(AuditLog))
     assert event.action == AuditAction.RBAC_DENIED
-    assert event.actor_role is Role.ANALYST
+    assert event.actor_role == Role.ANALYST
 
 
 def test_role_change_uses_database_without_new_token(
@@ -51,7 +51,7 @@ def test_role_change_uses_database_without_new_token(
     token = create_access_token(account.id, auth_settings)
     headers = {"Authorization": f"Bearer {token}"}
     assert protected_client.get("/test/protected", headers=headers).status_code == 403
-    account.role = Role.MANAGER
+    account.role = Role.ADMIN
     db_session.commit()
     assert protected_client.get("/test/protected", headers=headers).status_code == 200
     account.role = Role.ANALYST
@@ -84,3 +84,22 @@ def test_role_claim_does_not_override_database(protected_client, account, auth_s
         ).status_code
         == 403
     )
+
+
+def test_employee_has_no_shared_data_access_until_mailbox_ownership(
+    api_client, account, db_session, auth_settings
+):
+    account.role = Role.EMPLOYEE
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {create_access_token(account.id, auth_settings)}"}
+    assert api_client.get("/api/auth/me", headers=headers).json()["role"] == "EMPLOYEE"
+    for path in (
+        "/api/emails",
+        "/api/alerts",
+        "/api/dashboard/summary",
+        "/api/executives",
+        "/api/vendors",
+        "/api/reports/operational.pdf",
+        "/api/audit",
+    ):
+        assert api_client.get(path, headers=headers).status_code == 403

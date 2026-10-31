@@ -10,7 +10,7 @@ from app.services.report_formats import pdf_bytes, xlsx_bytes
 from app.services.reporting import gather_report
 
 router = APIRouter(prefix="/api/reports", tags=["Operational reports"])
-ReportReader = Annotated[User, Depends(require_roles(Role.ADMIN, Role.MANAGER, Role.AUDITOR))]
+ReportReader = Annotated[User, Depends(require_roles(Role.ADMIN, Role.ANALYST))]
 
 
 def report_response(session, extension, from_date, to_date):

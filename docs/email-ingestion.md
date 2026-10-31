@@ -1,5 +1,8 @@
 # Ingestión de emails — Fase 4
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 BEC Guard incorpora correos normalizados como entrada persistente. **No determina
 legitimidad, tipo BEC ni riesgo al ingestar.** El análisis es una operación separada
 implementada en [Fase 5](bec-analysis.md); no hay alertas.

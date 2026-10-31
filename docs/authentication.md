@@ -1,5 +1,8 @@
 # Autenticación, RBAC y auditoría — Fase 2B
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 Esta fase es exclusivamente backend. Solo añade `POST /api/auth/login` y
 `GET /api/auth/me`; no hay registro público, CRUD de usuarios ni frontend de login.
 

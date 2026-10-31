@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 
-from app.models.enums import BECType, Role
+from app.models.enums import AuditRole, BECType
 
 
 class DailyAlerts(BaseModel):
@@ -32,7 +32,7 @@ class AuditResponse(BaseModel):
     id: UUID
     actor_user_id: UUID | None
     actor_name: str | None
-    actor_role: Role | None
+    actor_role: AuditRole | None
     action: str
     resource_type: str | None
     resource_id: UUID | None

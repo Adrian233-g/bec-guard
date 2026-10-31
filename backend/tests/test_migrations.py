@@ -24,7 +24,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
     }
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0008_alert_hitl_constraints"
+            "0009_roles_employee"
         )
 
     migration_runner(command.downgrade, "0007_bec_alerts")
@@ -163,3 +163,60 @@ def test_identity_migration_rejects_collisions_without_merging(migrated_engine, 
         with migrated_engine.begin() as connection:
             connection.execute(text("DELETE FROM public.users"))
         migration_runner(command.upgrade, "head")
+
+
+def test_role_migration_requires_explicit_reassignment_preserves_audit(
+    migrated_engine, migration_runner, db_session
+):
+    from app.models import AuditLog
+    from app.models.enums import AuditRole
+
+    migration_runner(command.downgrade, "0008_alert_hitl_constraints")
+    user_id, event_id = uuid4(), uuid4()
+    with migrated_engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO public.users (id, name, email, password_hash, role) "
+                "VALUES (:id, 'Legacy', 'legacy@example.com', 'hash', 'MANAGER')"
+            ),
+            {"id": user_id},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.audit_log (id, actor_user_id, actor_role, action) "
+                "VALUES (:id, :user_id, 'MANAGER', 'LEGACY_EVENT')"
+            ),
+            {"id": event_id, "user_id": user_id},
+        )
+    with pytest.raises(RuntimeError, match="Reassign MANAGER/AUDITOR"):
+        migration_runner(command.upgrade, "head")
+    with migrated_engine.begin() as connection:
+        assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
+            "0008_alert_hitl_constraints"
+        )
+        connection.execute(
+            text("UPDATE public.users SET role='ADMIN' WHERE id=:id"), {"id": user_id}
+        )
+    migration_runner(command.upgrade, "head")
+    event = db_session.get(AuditLog, event_id)
+    assert event.actor_role is AuditRole.MANAGER
+    migration_runner(command.check)
+
+
+def test_role_migration_refuses_downgrade_with_employee_history(
+    migrated_engine, migration_runner, db_session
+):
+    with migrated_engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO public.audit_log (id, actor_role, action) "
+                "VALUES (:id, 'EMPLOYEE', 'EXAMPLE')"
+            ),
+            {"id": uuid4()},
+        )
+    with pytest.raises(RuntimeError, match="EMPLOYEE users or audit snapshots"):
+        migration_runner(command.downgrade, "0008_alert_hitl_constraints")
+    with migrated_engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
+            "0009_roles_employee"
+        )

@@ -105,21 +105,19 @@ it('email list links to safe detail', async () => {
   await screen.findByRole('heading', { name: 'Correo original' });
   expect(document.querySelector('.email-body script')).toBeNull();
 });
-it.each(['ADMIN', 'MANAGER', 'ANALYST', 'AUDITOR'] as const)(
+it.each(['ADMIN', 'ANALYST'] as const)(
   'manual analysis permissions %s',
   async (role) => {
     setup('/emails/email-1', role);
     await screen.findByRole('heading', { name: 'Sin análisis' });
     expect(!!screen.queryByRole('button', { name: 'Analizar correo' })).toBe(
-      role !== 'AUDITOR',
+      true,
     );
-    if (role !== 'AUDITOR') {
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Analizar correo' }),
-      );
-      await screen.findByText(alert.analysis.summary!);
-      await screen.findByRole('link', { name: 'Abrir alerta asociada' });
-    }
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Analizar correo' }),
+    );
+    await screen.findByText(alert.analysis.summary!);
+    await screen.findByRole('link', { name: 'Abrir alerta asociada' });
   },
 );
 it('retry ERROR updates the persisted analysis', async () => {
@@ -242,32 +240,29 @@ it.each(['executives', 'vendors'] as const)(
     ).toBe(true);
   },
 );
-it.each(['ANALYST', 'AUDITOR'] as const)(
-  'context is read only for %s',
-  async (role) => {
-    setup('/vendors', role);
-    await screen.findByText(vendor.name);
-    expect(
-      screen.queryByRole('button', { name: 'Añadir proveedor' }),
-    ).not.toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Ver ' + vendor.name }),
-    );
-    expect(screen.getByLabelText('Nombre')).toHaveAttribute('readonly');
-    expect(
-      screen.queryByRole('button', { name: 'Guardar cambios' }),
-    ).not.toBeInTheDocument();
-  },
-);
-it('manager can maintain executives', async () => {
-  setup('/executives', 'MANAGER');
+it.each(['ANALYST'] as const)('context is read only for %s', async (role) => {
+  setup('/vendors', role);
+  await screen.findByText(vendor.name);
+  expect(
+    screen.queryByRole('button', { name: 'Añadir proveedor' }),
+  ).not.toBeInTheDocument();
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Ver ' + vendor.name }),
+  );
+  expect(screen.getByLabelText('Nombre')).toHaveAttribute('readonly');
+  expect(
+    screen.queryByRole('button', { name: 'Guardar cambios' }),
+  ).not.toBeInTheDocument();
+});
+it('admin can maintain executives', async () => {
+  setup('/executives', 'ADMIN');
   await screen.findByRole('button', { name: 'Editar ' + executive.name });
   expect(
     screen.getByRole('button', { name: 'Añadir ejecutivo' }),
   ).toBeInTheDocument();
 });
 it('audit applies small server filters', async () => {
-  const fetch = setup('/audit', 'AUDITOR');
+  const fetch = setup('/audit', 'ADMIN');
   await screen.findByText('BEC_ALERT_CONFIRMED');
   await userEvent.type(screen.getByLabelText('Acción'), 'BEC_ALERT_CLAIMED');
   await userEvent.type(screen.getByLabelText('Recurso'), 'bec_alert');

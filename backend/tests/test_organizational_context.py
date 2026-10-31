@@ -195,9 +195,10 @@ def test_context_rbac(api_client, account, db_session, headers, context, role):
     resource_id = api_client.post(path, json=context["body"], headers=headers).json()["id"]
     account.role = role
     db_session.commit()
-    assert api_client.get(path, headers=headers).status_code == 200
-    assert api_client.get(f"{path}/{resource_id}", headers=headers).status_code == 200
-    allowed = role in {Role.ADMIN, Role.MANAGER}
+    expected_read = 403 if role == Role.EMPLOYEE else 200
+    assert api_client.get(path, headers=headers).status_code == expected_read
+    assert api_client.get(f"{path}/{resource_id}", headers=headers).status_code == expected_read
+    allowed = role == Role.ADMIN
     body = {
         **context["body"],
         context["identity"]: "next@example.com"
@@ -216,7 +217,7 @@ def test_context_rbac(api_client, account, db_session, headers, context, role):
         ).one()
         assert event.actor_role == role
     # Same token, role changed in DB: no stale role claim is accepted.
-    account.role = Role.AUDITOR if allowed else Role.MANAGER
+    account.role = Role.EMPLOYEE if allowed else Role.ADMIN
     db_session.commit()
     assert api_client.patch(
         f"{path}/{resource_id}", json={"name": "Changed role"}, headers=headers

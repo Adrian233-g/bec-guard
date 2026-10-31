@@ -1,5 +1,8 @@
 # Aplicación operativa y revisión humana
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 React 19 + TypeScript + Vite, con React Router para navegación. CSS plano y
 componentes pequeños compartidos; sin state manager, SDK generado, librería de
 charts ni modo mock. El dashboard consume agregados reales; los botones principales

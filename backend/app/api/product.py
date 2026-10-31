@@ -11,7 +11,7 @@ from app.schemas.product import AuditResponse, DashboardSummary
 from app.services.operational_summary import operational_summary
 
 router = APIRouter(prefix="/api", tags=["Product"])
-AuditReader = Annotated[User, Depends(require_roles(Role.ADMIN, Role.AUDITOR))]
+AuditReader = Annotated[User, Depends(require_roles(Role.ADMIN))]
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummary)

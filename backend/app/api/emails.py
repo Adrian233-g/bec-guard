@@ -13,8 +13,8 @@ from app.services.email_ingestion import ingest_email
 
 router = APIRouter(prefix="/api/emails", tags=["Email ingestion"])
 Database = Annotated[Session, Depends(get_session)]
-Reader = Annotated[User, Depends(require_roles(*Role))]
-Writer = Annotated[User, Depends(require_roles(Role.ADMIN, Role.MANAGER, Role.ANALYST))]
+Reader = Annotated[User, Depends(require_roles(Role.ADMIN, Role.ANALYST))]
+Writer = Annotated[User, Depends(require_roles(Role.ADMIN, Role.ANALYST))]
 
 
 @router.post("", response_model=EmailDetailResponse, status_code=201)

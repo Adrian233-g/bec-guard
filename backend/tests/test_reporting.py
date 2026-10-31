@@ -41,7 +41,7 @@ def test_report_rbac_and_http(api_client, db_session, account, report_setup, rol
     account.role = role
     db_session.commit()
     result = api_client.get(f"/api/reports/operational.{extension}", headers=headers)
-    if role == Role.ANALYST:
+    if role == Role.EMPLOYEE:
         assert result.status_code == 403
         return
     assert result.status_code == 200

@@ -118,16 +118,19 @@ function Protected() {
 function Shell() {
   const { user, logout } = useAuth();
   const [menu, setMenu] = useState(false);
-  const items = [
-    ['/', 'Dashboard'],
-    ['/alerts', 'Alertas'],
-    ['/emails', 'Correos'],
-    ['/executives', 'Ejecutivos'],
-    ['/vendors', 'Proveedores'],
-  ];
-  if (user && user.role !== 'ANALYST') items.push(['/reports', 'Reportes']);
-  if (user?.role === 'ADMIN' || user?.role === 'AUDITOR')
-    items.push(['/audit', 'Auditoría']);
+  const items =
+    user?.role === 'EMPLOYEE'
+      ? []
+      : [
+          ['/', 'Dashboard'],
+          ['/alerts', 'Alertas'],
+          ['/emails', 'Correos'],
+          ['/executives', 'Ejecutivos'],
+          ['/vendors', 'Proveedores'],
+        ];
+  if (user?.role === 'ADMIN' || user?.role === 'ANALYST')
+    items.push(['/reports', 'Reportes']);
+  if (user?.role === 'ADMIN') items.push(['/audit', 'Auditoría']);
   return (
     <div className="app">
       <a className="skip" href="#content">
@@ -180,7 +183,14 @@ function Shell() {
           </div>
         </header>
         <main id="content" tabIndex={-1}>
-          <Outlet />
+          {user?.role === 'EMPLOYEE' ? (
+            <section>
+              <h1>Bienvenido a BEC Guard</h1>
+              <p>Tu buzón personal estará disponible en una próxima etapa.</p>
+            </section>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>

@@ -17,6 +17,10 @@ La evaluación académica del holdout quedó separada y congelada antes de una �
 ejecución determinista. Los reportes PDF/Excel consultan datos operativos de
 PostgreSQL y se descargan desde la aplicación con autorización por rol.
 
+**Transición de roles:** consulta [roles vigentes y límites temporales](docs/roles.md).
+EMPLOYEE no accede todavía a correos hasta implementar buzones propios; ADMIN y
+ANALYST mantienen la vista compartida actual.
+
 La minifase de consolidación separa conceptualmente el estado operativo de la
 alerta (`status`) de su veredicto humano (`verdict`, inicialmente `null`) y confirma
 exactamente un rol por usuario en el MVP. Fase 7 implementa frontend e HITL con cierre auditable.
@@ -244,8 +248,8 @@ No se modifica el esquema `n8n`. Más detalles en [persistencia](docs/persistenc
 
 ## Ingestión y dataset
 
-`POST /api/emails` recibe JSON normalizado; ADMIN/MANAGER/ANALYST pueden ingestar.
-Los cuatro roles leen `GET /api/emails` (resúmenes sin cuerpo) y
+`POST /api/emails` recibe JSON normalizado; ADMIN/ANALYST pueden ingestar.
+ADMIN y ANALYST leen `GET /api/emails` (resúmenes sin cuerpo) y
 `GET /api/emails/{id}` (detalle). Message-ID es obligatorio y único: repetirlo
 responde 409. No hay PATCH/DELETE ni endpoint de upload MIME. El parser interno
 convierte bytes RFC 5322/MIME al mismo contrato sin guardar raw MIME o attachments.
@@ -266,7 +270,7 @@ uv run python -m app.scripts.validate_dataset
 
 Configura LLM_PROVIDER, LLM_MODEL y la key del proveedor elegido en `.env` o entorno
 del backend. Después de reconstruir backend, aplica `alembic upgrade head`.
-ADMIN/MANAGER/ANALYST pueden ejecutar:
+ADMIN/ANALYST pueden ejecutar:
 
 ```bash
 curl -X POST 'http://localhost:8000/api/emails/<EMAIL_UUID>/analyze' \
@@ -275,7 +279,7 @@ curl 'http://localhost:8000/api/emails/<EMAIL_UUID>/analysis' \
   -H 'Authorization: Bearer <ACCESS_TOKEN>'
 ```
 
-Todos los roles autenticados leen el resultado. COMPLETED se reutiliza sin otra
+ADMIN y ANALYST leen el resultado. COMPLETED se reutiliza sin otra
 llamada; ERROR se reintenta con el mismo POST y UUID del análisis. Los fallos LLM
 se persisten como ERROR con riesgo null y HTTP 502 (503 sin configuración), nunca
 LOW. Un COMPLETED >=70 crea una BECAlert OPEN con verdict null, sin ejecutar la
@@ -398,7 +402,7 @@ README.md
 
 ## Reportes operativos
 
-ADMIN, MANAGER y AUDITOR pueden descargar un reporte operativo PDF o Excel desde
+ADMIN y ANALYST pueden descargar un reporte operativo PDF o Excel desde
 `/reports`, con fechas UTC opcionales. Los archivos se generan en memoria desde
 PostgreSQL; incluyen agregados y una lista de alertas sin cuerpo del email ni
 referencias bancarias. ANALYST no tiene acceso. Ver [alcance y privacidad](docs/reporting.md).
@@ -411,8 +415,8 @@ Gmail puede conectarse por IMAP con contraseña de aplicación; los correos
 recibidos mientras el workflow está apagado se omiten al iniciarlo; Microsoft Graph
 no está integrado.
 
-Las APIs de contexto ofrecen GET/POST/PATCH; ADMIN/MANAGER escriben. Emails ofrecen
-POST/GET, con ingestión también para ANALYST. Todos los roles leen; no hay DELETE.
+Las APIs de contexto ofrecen GET/POST/PATCH; ADMIN escribe. Emails ofrecen
+POST/GET para ADMIN y ANALYST; EMPLOYEE aún no accede; no hay DELETE.
 EmailAnalysis, BECAlert, workflow n8n y frontend están implementados. La revisión
 humana permite claim, release y cierre con veredicto y resolución auditables.
 

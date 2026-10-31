@@ -1,5 +1,8 @@
 # Alertas, revisión humana y orquestación
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 FastAPI conserva reglas, contexto, LangChain, scoring y política de alertas. n8n
 solo orquesta correo normalizado → ingestión → análisis → respuesta. No hay broker,
 workers nuevos, proveedor de correo ni notificaciones. Fase 7 añade frontend e HITL.

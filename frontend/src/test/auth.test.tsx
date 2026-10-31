@@ -47,30 +47,33 @@ describe('session', () => {
     );
     expect(sessionStorage.getItem(tokenKey)).toBeNull();
   });
-  it.each(['AUDITOR', 'ANALYST'])('navigation reflects %s', async (role) => {
-    sessionStorage.setItem(tokenKey, 'test-token');
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockImplementation((url: string) =>
-          Promise.resolve(
-            response(
-              url.endsWith('/auth/me')
-                ? { ...user, role }
-                : url.includes('/dashboard/')
-                  ? dashboard
-                  : [],
+  it.each(['ADMIN', 'ANALYST', 'EMPLOYEE'])(
+    'navigation reflects %s',
+    async (role) => {
+      sessionStorage.setItem(tokenKey, 'test-token');
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockImplementation((url: string) =>
+            Promise.resolve(
+              response(
+                url.endsWith('/auth/me')
+                  ? { ...user, role }
+                  : url.includes('/dashboard/')
+                    ? dashboard
+                    : [],
+              ),
             ),
           ),
-        ),
-    );
-    renderApp();
-    await screen.findByText('Lucía');
-    expect(!!screen.queryByRole('link', { name: 'Auditoría' })).toBe(
-      role === 'AUDITOR',
-    );
-  });
+      );
+      renderApp();
+      await screen.findByText('Lucía');
+      expect(!!screen.queryByRole('link', { name: 'Auditoría' })).toBe(
+        role === 'ADMIN',
+      );
+    },
+  );
   it('clears the session on authenticated 401', async () => {
     sessionStorage.setItem(tokenKey, 'test-token');
     const fetch = vi

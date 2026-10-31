@@ -58,7 +58,7 @@ function setup(role: Role = 'ADMIN', status = 200) {
   );
   return fetch;
 }
-it.each(['ADMIN', 'MANAGER', 'AUDITOR'] as const)(
+it.each(['ADMIN', 'ANALYST'] as const)(
   'reports visible to %s',
   async (role) => {
     setup(role);
@@ -66,9 +66,9 @@ it.each(['ADMIN', 'MANAGER', 'AUDITOR'] as const)(
     expect(screen.getByRole('link', { name: 'Reportes' })).toBeInTheDocument();
   },
 );
-it('analyst has no reports link or download controls', async () => {
-  const fetch = setup('ANALYST');
-  await screen.findByRole('alert');
+it('employee has no reports link or download controls', async () => {
+  const fetch = setup('EMPLOYEE');
+  await screen.findByRole('heading', { name: 'Bienvenido a BEC Guard' });
   expect(
     screen.queryByRole('link', { name: 'Reportes' }),
   ).not.toBeInTheDocument();

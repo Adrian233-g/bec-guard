@@ -1,5 +1,8 @@
 # Reportes operativos
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 Los reportes pertenecen al producto y consultan únicamente datos persistidos en
 PostgreSQL. No importan el dataset, no leen ground truth y no llaman al evaluador
 académico. La evaluación de holdout tiene metodología y resultados separados en

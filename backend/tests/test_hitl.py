@@ -73,7 +73,7 @@ def test_full_review_cycle(api_client, db_session, account, review_setup, verdic
     }
 
 
-@pytest.mark.parametrize("role", [Role.ADMIN, Role.MANAGER, Role.ANALYST])
+@pytest.mark.parametrize("role", [Role.ADMIN, Role.ANALYST])
 def test_release_and_supervision(api_client, db_session, review_setup, role):
     alert, headers, other, other_headers = review_setup
     assert api_client.post(endpoint(alert, "release"), headers=headers).status_code == 200
@@ -110,9 +110,9 @@ def test_resolution_validation(api_client, review_setup, resolution):
     )
 
 
-def test_auditor_and_automation_cannot_review(api_client, db_session, account, review_setup):
+def test_employee_and_automation_cannot_review(api_client, db_session, account, review_setup):
     alert, headers, _, _ = review_setup
-    account.role = Role.AUDITOR
+    account.role = Role.EMPLOYEE
     db_session.commit()
     for action in ("claim", "release", "resolve"):
         assert (
@@ -241,7 +241,7 @@ def test_audit_read_roles(api_client, db_session, account, review_setup, role):
     result = api_client.get(
         "/api/audit?limit=1&action=BEC_ALERT_CREATED&resource_type=bec_alert", headers=headers
     )
-    if role not in {Role.ADMIN, Role.AUDITOR}:
+    if role != Role.ADMIN:
         assert result.status_code == 403
     else:
         assert result.status_code == 200 and len(result.json()) == 1

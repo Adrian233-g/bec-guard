@@ -219,9 +219,9 @@ it('409 refreshes current ownership', async () => {
   await screen.findByText('En revisión por Otra persona');
   expect(screen.getByText(/La alerta cambió durante/)).toBeInTheDocument();
 });
-it('auditor sees no mutation actions', async () => {
-  setup('/alerts/alert-1', 'AUDITOR');
-  await screen.findByRole('heading', { name: 'Revisión humana' });
+it('employee cannot access alert review', async () => {
+  setup('/alerts/alert-1', 'EMPLOYEE');
+  await screen.findByRole('heading', { name: 'Bienvenido a BEC Guard' });
   expect(
     screen.queryByRole('button', { name: 'Tomar revisión' }),
   ).not.toBeInTheDocument();

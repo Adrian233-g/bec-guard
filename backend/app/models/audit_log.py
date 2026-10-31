@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-from app.models.enums import Role
+from app.models.enums import AuditRole
 
 
 class AuditLog(Base):
@@ -16,9 +16,9 @@ class AuditLog(Base):
     actor_user_id: Mapped[UUID | None] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
     )
-    actor_role: Mapped[Role | None] = mapped_column(
+    actor_role: Mapped[AuditRole | None] = mapped_column(
         Enum(
-            Role,
+            AuditRole,
             name="actor_role",
             native_enum=False,
             create_constraint=True,

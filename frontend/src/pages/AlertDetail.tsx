@@ -100,8 +100,8 @@ function ReviewPanel({
   const [error, setError] = useState('');
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const own = alert.assigned_to === user?.id;
-  const allowed = user?.role !== 'AUDITOR';
-  const supervisor = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const allowed = user?.role === 'ADMIN' || user?.role === 'ANALYST';
+  const supervisor = user?.role === 'ADMIN';
   async function mutate(action: string, body?: unknown) {
     setBusy(true);
     setError('');

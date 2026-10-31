@@ -1,5 +1,8 @@
 # Contexto organizacional — Fase 3
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 FastAPI administra ejecutivos y proveedores conocidos en `public`. Este contexto
 se reutiliza en el [motor BEC de Fase 5](bec-analysis.md), que consume registros
 activos. Los endpoints/lookups de contexto no calculan riesgo por sí mismos.

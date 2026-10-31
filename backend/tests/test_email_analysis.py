@@ -195,18 +195,18 @@ def test_rbac_current_role_and_activity(api_client, analysis_setup, db_session, 
     account.role = role
     db_session.commit()
     response = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
-    assert response.status_code == (403 if role == Role.AUDITOR else 200)
+    assert response.status_code == (403 if role == Role.EMPLOYEE else 200)
     assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == (
-        404 if role == Role.AUDITOR else 200
+        403 if role == Role.EMPLOYEE else 200
     )
-    account.role = Role.ANALYST if role == Role.AUDITOR else Role.AUDITOR
+    account.role = Role.ANALYST if role == Role.EMPLOYEE else Role.EMPLOYEE
     db_session.commit()
     assert api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).status_code == (
-        200 if role == Role.AUDITOR else 403
+        200 if role == Role.EMPLOYEE else 403
     )
-    account.role = Role.AUDITOR
+    account.role = Role.EMPLOYEE
     db_session.commit()
-    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == 200
+    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).status_code == 403
     assert fake.calls == 1
     account.is_active = False
     db_session.commit()

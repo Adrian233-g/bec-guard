@@ -17,9 +17,10 @@ export const labels: Record<string, string> = {
   SENSITIVE_DATA_REQUEST: 'Solicitud de datos',
   OTHER: 'Otro patrón BEC',
   ADMIN: 'Administrador',
-  MANAGER: 'Supervisor',
+  MANAGER: 'Supervisor (histórico)',
+  EMPLOYEE: 'Empleado',
   ANALYST: 'Analista',
-  AUDITOR: 'Auditor',
+  AUDITOR: 'Auditor (histórico)',
 };
 export const label = (value: string | null | undefined) =>
   value ? labels[value] || value : '—';

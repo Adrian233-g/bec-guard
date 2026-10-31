@@ -4,6 +4,13 @@ from enum import StrEnum
 class Role(StrEnum):
     ADMIN = "ADMIN"
     ANALYST = "ANALYST"
+    EMPLOYEE = "EMPLOYEE"
+
+
+class AuditRole(StrEnum):
+    ADMIN = "ADMIN"
+    ANALYST = "ANALYST"
+    EMPLOYEE = "EMPLOYEE"
     MANAGER = "MANAGER"
     AUDITOR = "AUDITOR"
 

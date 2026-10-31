@@ -76,8 +76,7 @@ def test_seed_is_repeatable_without_overwriting_edits_or_analysis(db_session, ac
     "role,active",
     [
         (Role.ANALYST, True),
-        (Role.MANAGER, True),
-        (Role.AUDITOR, True),
+        (Role.EMPLOYEE, True),
         (Role.ADMIN, False),
     ],
 )

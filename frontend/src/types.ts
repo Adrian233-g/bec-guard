@@ -1,4 +1,5 @@
-export type Role = 'ADMIN' | 'MANAGER' | 'ANALYST' | 'AUDITOR';
+export type Role = 'ADMIN' | 'ANALYST' | 'EMPLOYEE';
+export type AuditRole = Role | 'MANAGER' | 'AUDITOR';
 export interface User {
   id: string;
   name: string;
@@ -118,7 +119,7 @@ export interface AuditEvent {
   id: string;
   actor_user_id: string | null;
   actor_name: string | null;
-  actor_role: Role | null;
+  actor_role: AuditRole | null;
   action: string;
   resource_type: string | null;
   resource_id: string | null;

@@ -15,7 +15,7 @@ import type { AuditEvent } from '../types';
 import { useResource } from '../useResource';
 export function Audit() {
   const { user } = useAuth();
-  return user?.role === 'ADMIN' || user?.role === 'AUDITOR' ? (
+  return user?.role === 'ADMIN' ? (
     <AuditList />
   ) : (
     <ErrorState error="No tienes permisos para consultar la auditoría." />

@@ -10,7 +10,7 @@ export function Reports() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const invalid = !!from && !!to && from > to;
-  if (user?.role === 'ANALYST')
+  if (user?.role === 'EMPLOYEE')
     return <ErrorState error="No tienes permisos para descargar reportes." />;
   async function download(format: 'pdf' | 'xlsx') {
     if (invalid) return;

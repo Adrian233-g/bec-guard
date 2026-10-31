@@ -130,17 +130,21 @@ def test_email_rbac_uses_current_database_role(
     original = ingest_email(db_session, EmailIngestRequest(**email_payload), actor=account)
     account.role = role
     db_session.commit()
-    assert api_client.get("/api/emails", headers=email_headers).status_code == 200
-    assert api_client.get(f"/api/emails/{original.id}", headers=email_headers).status_code == 200
+    expected_read = 403 if role == Role.EMPLOYEE else 200
+    assert api_client.get("/api/emails", headers=email_headers).status_code == expected_read
+    assert (
+        api_client.get(f"/api/emails/{original.id}", headers=email_headers).status_code
+        == expected_read
+    )
     body = {**email_payload, "message_id": "<role-1@fixtures.example>"}
     assert api_client.post("/api/emails", json=body, headers=email_headers).status_code == (
-        403 if role == Role.AUDITOR else 201
+        403 if role == Role.EMPLOYEE else 201
     )
-    account.role = Role.ANALYST if role == Role.AUDITOR else Role.AUDITOR
+    account.role = Role.ANALYST if role == Role.EMPLOYEE else Role.EMPLOYEE
     db_session.commit()
     body["message_id"] = "<role-2@fixtures.example>"
     assert api_client.post("/api/emails", json=body, headers=email_headers).status_code == (
-        201 if role == Role.AUDITOR else 403
+        201 if role == Role.EMPLOYEE else 403
     )
     account.is_active = False
     db_session.commit()

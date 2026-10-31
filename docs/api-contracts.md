@@ -1,5 +1,8 @@
 # Contratos de API y análisis
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 ## Autenticación, contexto e ingestión
 
 `POST /api/auth/login` recibe email/password y devuelve access token.

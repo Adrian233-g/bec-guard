@@ -73,6 +73,10 @@ def test_alert_reads_and_no_hitl(api_client, db_session, account, alert_setup, r
     account.role = role
     db_session.commit()
     response = api_client.get("/api/alerts", headers=headers)
+    if role == Role.EMPLOYEE:
+        assert response.status_code == 403
+        assert api_client.get(f"/api/alerts/{alert.id}", headers=headers).status_code == 403
+        return
     assert response.status_code == 200
     [summary] = response.json()
     assert summary["email_id"] == str(email.id) and summary["risk_score"] == 70

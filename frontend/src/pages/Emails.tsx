@@ -200,7 +200,7 @@ function ManualAnalysis({ id }: { id: string }) {
               ) : (
                 <p>Este correo todavía no tiene una evaluación BEC.</p>
               )}
-              {user?.role !== 'AUDITOR' && (
+              {(user?.role === 'ADMIN' || user?.role === 'ANALYST') && (
                 <button disabled={busy} onClick={() => void analyze()}>
                   {busy
                     ? 'Analizando…'

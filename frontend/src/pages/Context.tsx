@@ -31,7 +31,7 @@ const fields = {
 } as const;
 export function ContextPage({ kind }: { kind: Kind }) {
   const { user } = useAuth();
-  const write = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const write = user?.role === 'ADMIN';
   const [params, setParams] = useSearchParams();
   const offset = Math.max(0, Number(params.get('offset')) || 0);
   const includeInactive = params.get('include_inactive') !== 'false';

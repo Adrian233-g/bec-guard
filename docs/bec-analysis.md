@@ -1,5 +1,8 @@
 # Análisis BEC — Fase 5
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 El backend analiza un Email persistido y conserva un EmailAnalysis actual. Es un
 monolito síncrono: reglas + contexto activo → semántica LangChain → scoring híbrido
 → resultado y auditoría en un commit. Fase 6 añade BECAlert OPEN para COMPLETED

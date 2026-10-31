@@ -1,5 +1,8 @@
 # Dominio mínimo
 
+> **Transición de roles:** las referencias históricas a MANAGER/AUDITOR y permisos
+> anteriores se sustituyen por los [roles vigentes](roles.md).
+
 Estas definiciones parten de Fase 0. User, Role, AuditLog, ExecutiveContact, Vendor
 y Email/EmailAnalysis tienen persistencia. Hay autenticación, RBAC, contexto
 organizacional, ingestión, análisis BEC híbrido y BECAlert automática persistente.
