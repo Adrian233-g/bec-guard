@@ -5,17 +5,18 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 
 from app.api.dependencies import require_roles
-from app.api.emails import Database, Reader
+from app.api.emails import Database
 from app.models import AuditLog, BECAlert, Role, User
 from app.schemas.product import AuditResponse, DashboardSummary
 from app.services.operational_summary import operational_summary
 
 router = APIRouter(prefix="/api", tags=["Product"])
 AuditReader = Annotated[User, Depends(require_roles(Role.ADMIN))]
+DashboardReader = Annotated[User, Depends(require_roles(Role.ADMIN, Role.ANALYST))]
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummary)
-def dashboard_summary(session: Database, _actor: Reader):
+def dashboard_summary(session: Database, _actor: DashboardReader):
     today = datetime.now(UTC).date()
     dates = [today - timedelta(days=i) for i in reversed(range(7))]
     day = func.date(func.timezone("UTC", BECAlert.created_at))

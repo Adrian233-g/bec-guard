@@ -16,6 +16,9 @@ class AlertResponse(BaseModel):
     verdict: AlertVerdict | None
     assigned_to_name: str | None = None
     assigned_to: UUID | None
+    mailbox_id: UUID | None = None
+    mailbox_email: str | None = None
+    owner_name: str | None = None
     created_at: AwareDatetime
     updated_at: AwareDatetime
 

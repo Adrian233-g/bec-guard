@@ -1,13 +1,23 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiError, message } from '../api';
-import { PageHeader } from '../components';
+import { Badge, LoadingState, PageHeader } from '../components';
+import type { Mailbox } from '../types';
+import { useResource } from '../useResource';
 
 export function Account() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  async function submit(e: FormEvent<HTMLFormElement>) {
+
+  const [mailboxBusy, setMailboxBusy] = useState(false);
+  const [mailboxNotice, setMailboxNotice] = useState('');
+  const [mailboxError, setMailboxError] = useState('');
+
+  const mailboxResource = useResource<Mailbox[]>('/mailboxes');
+  const mailbox = mailboxResource.data?.[0];
+
+  async function submitPassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const data = new FormData(form);
@@ -38,11 +48,63 @@ export function Account() {
       setBusy(false);
     }
   }
+
+  async function submitMailbox(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    const email = String(data.get('email_address') || '').trim();
+    if (!email) return;
+
+    setMailboxBusy(true);
+    setMailboxError('');
+    setMailboxNotice('');
+    try {
+      await api<Mailbox>('/mailboxes', {
+        method: 'POST',
+        body: JSON.stringify({ email_address: email, provider: 'gmail' }),
+      });
+      form.reset();
+      setMailboxNotice('Buzón registrado y conectado.');
+      mailboxResource.reload();
+    } catch (e) {
+      setMailboxError(
+        e instanceof ApiError && e.status === 409
+          ? 'La dirección ya está registrada o ya posees un buzón activo.'
+          : message(e),
+      );
+    } finally {
+      setMailboxBusy(false);
+    }
+  }
+
+  async function toggleMailboxStatus() {
+    if (!mailbox) return;
+    setMailboxBusy(true);
+    setMailboxError('');
+    setMailboxNotice('');
+    const nextStatus = mailbox.status === 'ACTIVE' ? 'DISCONNECTED' : 'ACTIVE';
+    try {
+      await api<Mailbox>(`/mailboxes/${mailbox.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setMailboxNotice(
+        nextStatus === 'ACTIVE' ? 'Buzón activado.' : 'Buzón desconectado.',
+      );
+      mailboxResource.reload();
+    } catch (e) {
+      setMailboxError(message(e));
+    } finally {
+      setMailboxBusy(false);
+    }
+  }
+
   return (
     <>
       <PageHeader
         title="Mi cuenta"
-        description="Actualiza tu contraseña de BEC Guard."
+        description="Gestiona tu buzón personal y tus credenciales de acceso."
       />
       {notice && (
         <p role="status" className="notice">
@@ -54,8 +116,85 @@ export function Account() {
           {error}
         </p>
       )}
-      <section className="panel">
-        <form onSubmit={(e) => void submit(e)}>
+
+      <section className="panel" aria-labelledby="mailbox-heading">
+        <h2 id="mailbox-heading">Buzón personal</h2>
+        <p className="muted">
+          Conecta la dirección de correo corporativa o personal que será
+          protegida por BEC Guard.
+        </p>
+
+        {mailboxNotice && (
+          <p role="status" className="notice">
+            {mailboxNotice}
+          </p>
+        )}
+        {mailboxError && (
+          <p role="alert" className="error">
+            {mailboxError}
+          </p>
+        )}
+
+        {mailboxResource.loading ? (
+          <LoadingState />
+        ) : mailbox ? (
+          <div className="mailbox-card">
+            <dl className="facts">
+              <div>
+                <dt>Dirección de correo</dt>
+                <dd>
+                  <strong>{mailbox.email_address}</strong>
+                </dd>
+              </div>
+              <div>
+                <dt>Proveedor</dt>
+                <dd>{mailbox.provider.toUpperCase()}</dd>
+              </div>
+              <div>
+                <dt>Estado de conexión</dt>
+                <dd>
+                  <Badge value={mailbox.status} />
+                </dd>
+              </div>
+            </dl>
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                className="secondary"
+                disabled={mailboxBusy}
+                onClick={() => void toggleMailboxStatus()}
+              >
+                {mailbox.status === 'ACTIVE'
+                  ? 'Desconectar buzón'
+                  : 'Reactivar buzón'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={(e) => void submitMailbox(e)}>
+            <label htmlFor="mailbox-email">
+              Dirección de correo electrónico
+            </label>
+            <input
+              id="mailbox-email"
+              name="email_address"
+              type="email"
+              placeholder="tu.nombre@organizacion.com"
+              required
+              maxLength={320}
+            />
+            <button disabled={mailboxBusy}>Conectar buzón</button>
+          </form>
+        )}
+      </section>
+
+      <section
+        className="panel"
+        aria-labelledby="password-heading"
+        style={{ marginTop: '2rem' }}
+      >
+        <h2 id="password-heading">Seguridad de la sesión</h2>
+        <form onSubmit={(e) => void submitPassword(e)}>
           <label htmlFor="current-password">Contraseña actual</label>
           <input
             id="current-password"

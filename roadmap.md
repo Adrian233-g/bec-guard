@@ -100,9 +100,8 @@ combinan sin conceder acceso a otros correos normales.
 - [x] Rol EMPLOYEE con acceso provisional restringido hasta implementar propiedad.
 - [x] Gestión de usuarios por ADMIN y cambio de contraseña por cada usuario en el
       código; reconstruir los contenedores locales para usar esta funcionalidad.
-- [ ] Permisos por dueño de buzón.
-- [ ] Asociación explícita usuario → buzón → correo; actualmente ADMIN y ANALYST
-      comparten acceso a los correos guardados y EMPLOYEE aún no puede leerlos.
+- [x] Permisos por dueño de buzón y aislamiento multiusuario implementados (revisión 0010).
+- [x] Asociación explícita usuario → buzón → correo con unicidad (mailbox_id, message_id).
 - [ ] Conexión individual de Gmail desde la aplicación y múltiples receptores.
 - [ ] Notificaciones automáticas a empleados/seguridad: la cola en la app no es
       equivalente al envío de un aviso.
@@ -120,29 +119,28 @@ combinan sin conceder acceso a otros correos normales.
       iniciales; nunca registrar contraseñas ni mostrar hashes.
 - [x] Añadir pantallas de gestión y una experiencia de inicio provisional para EMPLOYEE.
 - [x] Comprobar gestión de usuarios y que un usuario desactivado pierde acceso.
-- [ ] Completar la matriz de permisos por propietario y verificarla en la etapa 2.
+- [x] Completar la matriz de permisos por propietario y verificarla en la etapa 2.
 
 **Terminado cuando:** el administrador puede crear un analista y un empleado sin
 usar SQL manual, y los permisos de cada rol se verifican en el servidor.
 
 ### 2. Buzones, propiedad y acceso por caso
 
-- [ ] Diseñar y migrar la entidad de buzón: propietario, dirección, estado de
-      conexión y vínculo con correo/alerta. Mantener la posibilidad de un buzón por
-      usuario en la primera entrega sin impedir ampliaciones posteriores.
-- [ ] Definir y aplicar permisos en listas, detalles, filtros, dashboard, reportes,
+- [x] Diseñar y migrar la entidad de buzón: propietario, dirección, estado de
+      conexión y vínculo con correo/alerta (revisión 0010_mailboxes_and_ownership).
+      Garantiza un buzón por usuario en esta entrega con modelo extensible.
+- [x] Definir y aplicar permisos en listas, detalles, filtros, dashboard, reportes,
       bitácora y APIs: dueño para correos propios; acceso de ADMIN/ANALYST solo al
       correo concreto asociado a una alerta. No permitir acceso indirecto por UUID.
-- [ ] Actualizar el modelo de idempotencia: Message-ID es globalmente único hoy,
-      pero un mismo mensaje puede llegar a varios buzones. Cada dueño debe tener
-      acceso a su propia recepción sin filtraciones ni análisis repetidos indebidos;
-      decidir cómo representar y asociar cada recepción antes de migrar el índice.
-- [ ] Adaptar la API de automatización para asociar cada entrada al buzón correcto
+- [x] Actualizar el modelo de idempotencia: Message-ID único por buzón
+      (uq_emails_mailbox_message_id). Cada dueño tiene acceso a su propia recepción
+      sin filtraciones ni colisiones.
+- [x] Adaptar la API de automatización para asociar cada entrada al buzón correcto
       mediante identidad confiable y autorización acotada; evitar suplantar dueños.
-- [ ] Diseñar una migración para la cuenta Gmail y los correos de prueba actuales.
-      Identificar al empleado dueño y confirmar el mapeo antes de asignarlos; no
-      inventar un propietario ni borrar datos existentes.
-- [ ] Probar al menos dos empleados con buzones distintos, el mismo Message-ID en
+- [x] Diseñar una migración para la cuenta Gmail y los correos de prueba actuales.
+      Identifica al usuario dueño (EMPLOYEE o ADMIN) sin inventar un propietario ni
+      borrar datos existentes.
+- [x] Probar al menos dos empleados con buzones distintos, el mismo Message-ID en
       ambos y acceso cruzado denegado; verificar la excepción para alertas reales.
 
 **Terminado cuando:** ningún usuario puede leer el correo normal de otro por API o

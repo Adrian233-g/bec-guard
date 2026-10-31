@@ -68,7 +68,7 @@ it.each(['ADMIN', 'ANALYST'] as const)(
 );
 it('employee has no reports link or download controls', async () => {
   const fetch = setup('EMPLOYEE');
-  await screen.findByRole('heading', { name: 'Bienvenido a BEC Guard' });
+  await screen.findByText('No tienes permisos para descargar reportes.');
   expect(
     screen.queryByRole('link', { name: 'Reportes' }),
   ).not.toBeInTheDocument();

@@ -92,6 +92,7 @@ UTCDateTime = Annotated[AwareDatetime, AfterValidator(to_utc)]
 class EmailIngestRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
+    mailbox_id: UUID | None = None
     message_id: MessageID
     thread_id: Annotated[
         Annotated[str, StringConstraints(max_length=MAX_THREAD_ID_LENGTH)] | None,
@@ -136,6 +137,7 @@ class EmailSummaryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    mailbox_id: UUID
     message_id: str
     sender_name: str | None
     sender_email: str

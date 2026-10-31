@@ -120,10 +120,12 @@ function Protected() {
 function Shell() {
   const { user, logout } = useAuth();
   const [menu, setMenu] = useState(false);
-  const location = useLocation();
   const items =
     user?.role === 'EMPLOYEE'
-      ? []
+      ? [
+          ['/emails', 'Correos'],
+          ['/alerts', 'Alertas'],
+        ]
       : [
           ['/', 'Dashboard'],
           ['/alerts', 'Alertas'],
@@ -190,26 +192,29 @@ function Shell() {
           </div>
         </header>
         <main id="content" tabIndex={-1}>
-          {user?.role === 'EMPLOYEE' && location.pathname !== '/account' ? (
-            <section>
-              <h1>Bienvenido a BEC Guard</h1>
-              <p>Tu buzón personal estará disponible en una próxima etapa.</p>
-            </section>
-          ) : (
-            <Outlet />
-          )}
+          <Outlet />
         </main>
       </div>
     </div>
   );
 }
 export function AppRoutes() {
+  const { user } = useAuth();
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<Protected />}>
         <Route element={<Shell />}>
-          <Route index element={<Dashboard />} />
+          <Route
+            index
+            element={
+              user?.role === 'EMPLOYEE' ? (
+                <Navigate to="/emails" replace />
+              ) : (
+                <Dashboard />
+              )
+            }
+          />
           <Route path="alerts" element={<Alerts />} />
           <Route path="alerts/:alertId" element={<AlertDetail />} />
           <Route path="emails" element={<Emails />} />

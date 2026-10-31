@@ -17,6 +17,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
         "audit_log",
         "executive_contacts",
         "vendors",
+        "mailboxes",
         "emails",
         "email_analysis",
         "bec_alerts",
@@ -24,7 +25,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
     }
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0009_roles_employee"
+            "0010_mailboxes_and_ownership"
         )
 
     migration_runner(command.downgrade, "0007_bec_alerts")
@@ -220,3 +221,67 @@ def test_role_migration_refuses_downgrade_with_employee_history(
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
             "0009_roles_employee"
         )
+
+
+def test_mailbox_migration_refuses_downgrade_with_duplicate_message_ids(
+    migrated_engine, migration_runner
+):
+    with migrated_engine.begin() as connection:
+        user1 = uuid4()
+        user2 = uuid4()
+        mb1 = uuid4()
+        mb2 = uuid4()
+        connection.execute(
+            text(
+                "INSERT INTO public.users (id, name, email, password_hash, role) "
+                "VALUES (:id, 'U1', 'u1@example.com', 'hash', 'EMPLOYEE')"
+            ),
+            {"id": user1},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.users (id, name, email, password_hash, role) "
+                "VALUES (:id, 'U2', 'u2@example.com', 'hash', 'EMPLOYEE')"
+            ),
+            {"id": user2},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.mailboxes (id, user_id, email_address, provider, status) "
+                "VALUES (:id, :u, 'u1@example.com', 'gmail', 'ACTIVE')"
+            ),
+            {"id": mb1, "u": user1},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.mailboxes (id, user_id, email_address, provider, status) "
+                "VALUES (:id, :u, 'u2@example.com', 'gmail', 'ACTIVE')"
+            ),
+            {"id": mb2, "u": user2},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.emails ("
+                "  id, mailbox_id, message_id, sender_email, subject, body_text, "
+                "  to_recipients, cc_recipients, received_at"
+                ") VALUES ("
+                "  :id, :mb, '<dup@example.com>', 's@example.com', 'sub', 'body', "
+                "  '[]', '[]', NOW()"
+                ")"
+            ),
+            {"id": uuid4(), "mb": mb1},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.emails ("
+                "  id, mailbox_id, message_id, sender_email, subject, body_text, "
+                "  to_recipients, cc_recipients, received_at"
+                ") VALUES ("
+                "  :id, :mb, '<dup@example.com>', 's@example.com', 'sub', 'body', "
+                "  '[]', '[]', NOW()"
+                ")"
+            ),
+            {"id": uuid4(), "mb": mb2},
+        )
+    with pytest.raises(RuntimeError, match="duplicate message_id exists across mailboxes"):
+        migration_runner(command.downgrade, "0009_roles_employee")

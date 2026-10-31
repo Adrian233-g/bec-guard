@@ -119,3 +119,21 @@ it('employee can change their own password', async () => {
   ).toBe(true);
   expect(screen.getByLabelText('Contraseña actual')).toHaveValue('');
 });
+
+it('employee can register a mailbox in account', async () => {
+  const fetch = setup('/account', 'EMPLOYEE');
+  await userEvent.type(
+    await screen.findByLabelText('Dirección de correo electrónico'),
+    'emp@example.com',
+  );
+  await userEvent.click(screen.getByRole('button', { name: 'Conectar buzón' }));
+  await screen.findByText('Buzón registrado y conectado.');
+  expect(
+    fetch.mock.calls.some(
+      ([url, init]) =>
+        url === '/api/mailboxes' &&
+        init?.method === 'POST' &&
+        String(init.body).includes('emp@example.com'),
+    ),
+  ).toBe(true);
+});

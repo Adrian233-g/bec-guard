@@ -5,14 +5,14 @@ import json
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.database import create_database_engine, create_session_factory
 from app.core.identity import validate_identity_email
-from app.models import Email, ExecutiveContact, Role, User, Vendor
+from app.models import Email, ExecutiveContact, Mailbox, Role, User, Vendor
 from app.schemas.email import EmailIngestRequest
 from app.schemas.organizational_context import ExecutiveContactCreate, VendorCreate
 from app.scripts.demo_data import EXECUTIVES, MESSAGES, VENDORS
@@ -69,13 +69,33 @@ def seed_demo(session: Session, *, actor: User) -> dict:
             if error.status_code != 409:
                 raise
             counts["vendors"]["existing"] += 1
+    demo_mailbox = session.scalar(
+        select(Mailbox).where(func.lower(Mailbox.email_address) == "tesoreria@oriona-demo.example")
+    )
+    if demo_mailbox is None:
+        demo_mailbox = session.scalar(select(Mailbox).where(Mailbox.user_id == actor.id))
+    if demo_mailbox is None:
+        demo_mailbox = Mailbox(
+            user_id=actor.id,
+            email_address="tesoreria@oriona-demo.example",
+            provider="demo",
+            status="ACTIVE",
+        )
+        session.add(demo_mailbox)
+        session.flush()
+
     for data in emails:
-        exists = session.scalar(select(Email.id).where(Email.message_id == data.message_id))
+        exists = session.scalar(
+            select(Email.id).where(
+                Email.mailbox_id == demo_mailbox.id,
+                Email.message_id == data.message_id,
+            )
+        )
         if exists is not None:
             counts["emails"]["existing"] += 1
             continue
         try:
-            ingest_email(session, data, actor=actor)
+            ingest_email(session, data, mailbox_id=demo_mailbox.id, actor=actor)
             counts["emails"]["created"] += 1
         except HTTPException as error:
             if error.status_code != 409:

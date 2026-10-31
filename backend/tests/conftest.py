@@ -90,9 +90,9 @@ def db_session(migrated_engine) -> Iterator[Session]:
                 # Guarded, disposable test DB only. Do not disable the audit trigger.
                 connection.execute(
                     text(
-                        "TRUNCATE public.audit_log, public.users, "
-                        "public.executive_contacts, public.vendors, public.emails, "
-                        "public.email_analysis, public.bec_alerts"
+                        "TRUNCATE public.audit_log, public.bec_alerts, "
+                        "public.email_analysis, public.emails, public.mailboxes, "
+                        "public.executive_contacts, public.vendors, public.users CASCADE"
                     )
                 )
 

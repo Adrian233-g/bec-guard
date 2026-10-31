@@ -221,7 +221,7 @@ it('409 refreshes current ownership', async () => {
 });
 it('employee cannot access alert review', async () => {
   setup('/alerts/alert-1', 'EMPLOYEE');
-  await screen.findByRole('heading', { name: 'Bienvenido a BEC Guard' });
+  await screen.findByText(/Tu rol permite consultar la evidencia/);
   expect(
     screen.queryByRole('button', { name: 'Tomar revisión' }),
   ).not.toBeInTheDocument();

@@ -41,8 +41,18 @@ export interface Analysis {
   provider: string | null;
   model: string | null;
 }
+export interface Mailbox {
+  id: string;
+  user_id: string;
+  email_address: string;
+  provider: string;
+  status: 'ACTIVE' | 'DISCONNECTED' | 'ERROR';
+  created_at: string;
+  updated_at: string;
+}
 export interface EmailSummary {
   id: string;
+  mailbox_id?: string;
   message_id: string;
   sender_name: string | null;
   sender_email: string;
@@ -66,6 +76,9 @@ export interface AlertSummary {
   verdict: Verdict | null;
   assigned_to: string | null;
   assigned_to_name: string | null;
+  mailbox_id?: string | null;
+  mailbox_email?: string | null;
+  owner_name?: string | null;
   risk_score: number;
   risk_level: Risk;
   bec_type: BECType | null;
@@ -83,6 +96,9 @@ export interface AlertDetail {
   verdict: Verdict | null;
   assigned_to: string | null;
   assigned_to_name: string | null;
+  mailbox_id?: string | null;
+  mailbox_email?: string | null;
+  owner_name?: string | null;
   resolution: string | null;
   closed_at: string | null;
   created_at: string;

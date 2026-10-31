@@ -32,6 +32,9 @@ class AuditAction(StrEnum):
     VENDOR_UPDATED = "VENDOR_UPDATED"
     VENDOR_DEACTIVATED = "VENDOR_DEACTIVATED"
     VENDOR_REACTIVATED = "VENDOR_REACTIVATED"
+    MAILBOX_CREATED = "MAILBOX_CREATED"
+    MAILBOX_UPDATED = "MAILBOX_UPDATED"
+    MAILBOX_DISCONNECTED = "MAILBOX_DISCONNECTED"
 
 
 class AuditReason(StrEnum):
@@ -194,4 +197,35 @@ def record_alert_review(
         raise ValueError("Invalid review event")
     event = record_alert_created(session, actor=actor, alert_id=alert_id, peer=peer)
     event.action = action.value
+    return event
+
+
+def record_mailbox_event(
+    session: Session,
+    action: AuditAction,
+    *,
+    actor: User,
+    mailbox_id: UUID,
+    peer: str | None = None,
+) -> AuditLog:
+    if action not in {
+        AuditAction.MAILBOX_CREATED,
+        AuditAction.MAILBOX_UPDATED,
+        AuditAction.MAILBOX_DISCONNECTED,
+    }:
+        raise ValueError("Invalid mailbox audit action")
+    try:
+        address = str(parse_ip(peer)) if peer else None
+    except ValueError:
+        address = None
+    event = AuditLog(
+        actor_user_id=actor.id,
+        actor_role=actor.role,
+        action=action.value,
+        resource_type="mailbox",
+        resource_id=mailbox_id,
+        ip_address=address,
+        details=None,
+    )
+    session.add(event)
     return event

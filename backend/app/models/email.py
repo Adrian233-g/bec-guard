@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Index, String, Text, UniqueConstraint, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,6 +19,9 @@ class Email(Base):
     __tablename__ = "emails"
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    mailbox_id: Mapped[UUID] = mapped_column(
+        ForeignKey("mailboxes.id", ondelete="RESTRICT"), nullable=False
+    )
     message_id: Mapped[str] = mapped_column(String(MAX_MESSAGE_ID_LENGTH), nullable=False)
     thread_id: Mapped[str | None] = mapped_column(String(MAX_THREAD_ID_LENGTH))
     sender_name: Mapped[str | None] = mapped_column(String(MAX_SENDER_NAME_LENGTH))
@@ -36,6 +39,7 @@ class Email(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("message_id"),
+        UniqueConstraint("mailbox_id", "message_id", name="uq_emails_mailbox_message_id"),
+        Index("ix_emails_mailbox_received_at_id", mailbox_id, received_at.desc(), id),
         Index("ix_emails_received_at_id", received_at.desc(), id),
     )

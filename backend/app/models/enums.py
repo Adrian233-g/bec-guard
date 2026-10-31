@@ -44,3 +44,15 @@ class AlertStatus(StrEnum):
 class AlertVerdict(StrEnum):
     CONFIRMED_BEC = "CONFIRMED_BEC"
     FALSE_POSITIVE = "FALSE_POSITIVE"
+
+
+class MailboxStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    DISCONNECTED = "DISCONNECTED"
+    ERROR = "ERROR"
+
+
+class MailboxProvider(StrEnum):
+    GMAIL = "gmail"
+    IMAP = "imap"
+    OTHER = "other"
