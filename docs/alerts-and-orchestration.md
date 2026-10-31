@@ -191,3 +191,13 @@ La campana del frontend consulta el contador al iniciar, al recuperar foco y cad
 minuto. Al abrirla muestra los últimos 10 avisos propios; cada enlace abre el caso
 y marca el aviso como leído, con una acción para marcar todos. El contador es solo
 indicativo: la autorización real sigue en los endpoints de alertas.
+
+## Verificación integrada simulada
+
+`tests/test_integrated_flow.py` cubre el recorrido completo sin llamar a un
+proveedor real: ingesta automatizada en el buzón de un empleado, análisis con
+analizador falso, alerta y avisos para el dueño y el equipo, cola del analista,
+claim, resolución confirmada, actualización visible para el empleado y bitácora
+con actores correctos y datos mínimos. También comprueba que otro empleado no
+accede al correo, alerta ni aviso, y que un resultado MEDIUM no genera alerta ni
+notificación.

@@ -228,8 +228,10 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
       Se añadió `LLM_RATE_LIMITED` (HTTP 429) con detección por metadatos del
       proveedor y mensajes accionables; los reintentos siguen siendo manuales.
       Revisión 0014 aplicada.
-- [ ] **4.6. Verificación integrada:** probar con datos simulados el recorrido
-      empleado → alerta → analista → resolución, sin gastar cuota de IA.
+- [x] **4.6. Verificación integrada:** `tests/test_integrated_flow.py` recorre con
+      automatización y analizador simulados el correo de un empleado, la creación
+      de alerta y avisos, la cola del analista, claim/resolve y la bitácora.
+      Incluye aislamiento entre empleados y un caso MEDIUM sin alerta ni aviso.
 
 **Terminado cuando:** una alerta llega a la cola correcta, el empleado recibe el
 aviso definido y un analista puede investigar y cerrar el caso con trazabilidad.
