@@ -247,7 +247,7 @@ Si ya existen correos, consulta primero [propiedad y migración de buzones](docs
 
 Para crear una revisión: `uv run alembic revision --autogenerate -m "describe change"`.
 Revisa el archivo generado antes de aplicarlo. Para revertir la última revisión:
-`uv run alembic downgrade -1`. Revertir 0013 elimina los avisos in-app; 0008 relaja constraints HITL; 0007 elimina alertas; 0006 elimina análisis; 0005 elimina emails;
+`uv run alembic downgrade -1`. Revertir 0014 restaura los códigos de error anteriores; 0013 elimina los avisos in-app; 0008 relaja constraints HITL; 0007 elimina alertas; 0006 elimina análisis; 0005 elimina emails;
 revertir 0004 elimina ejecutivos/proveedores;
 revertir 0003 elimina la auditoría; llegar a base elimina también users. El ciclo
 destructivo se valida solo en la base de test.
@@ -288,7 +288,8 @@ curl 'http://localhost:8000/api/emails/<EMAIL_UUID>/analysis' \
 
 El dueño y, si hay una alerta, ADMIN o ANALYST pueden leer el resultado. COMPLETED se reutiliza sin otra
 llamada; ERROR se reintenta con el mismo POST y UUID del análisis. Los fallos LLM
-se persisten como ERROR con riesgo null y HTTP 502 (503 sin configuración), nunca
+se persisten como ERROR con riesgo null y HTTP 502 (503 sin configuración, 429 si
+el proveedor agota cuota o limita peticiones), nunca
 LOW. Un COMPLETED >=70 crea una BECAlert OPEN con verdict null, sin ejecutar la
 recomendación. GET /api/alerts y GET /api/alerts/{id} permiten lectura a todos los
 roles autenticados. Claim/release/resolve implementan HITL, sin PATCH/DELETE.

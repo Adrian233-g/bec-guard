@@ -1,13 +1,76 @@
 import { Link } from 'react-router-dom';
 import { Badge, EmptyState, date, label } from './components';
 import type { Analysis, EmailDetail } from './types';
+
+export const ALERT_THRESHOLD = 70;
+
+const errorExplanations: Record<string, { title: string; detail: string }> = {
+  LLM_NOT_CONFIGURED: {
+    title: 'Proveedor de IA sin configurar',
+    detail:
+      'Un administrador debe configurar el proveedor y la clave del modelo. No se asignó riesgo ni se creó una alerta.',
+  },
+  LLM_TIMEOUT: {
+    title: 'El proveedor no respondió a tiempo',
+    detail:
+      'El análisis quedó incompleto y no se creó una alerta. Puedes reintentarlo manualmente.',
+  },
+  LLM_RATE_LIMITED: {
+    title: 'Límite de uso del proveedor',
+    detail:
+      'El proveedor rechazó la solicitud por cuota o límite de peticiones. No se creó una alerta. Espera un momento y reintenta manualmente; no hay reintentos automáticos.',
+  },
+  LLM_PROVIDER_ERROR: {
+    title: 'Fallo del proveedor de IA',
+    detail:
+      'El proveedor devolvió un error inesperado. El análisis quedó incompleto y no se creó una alerta. Reintenta manualmente más tarde.',
+  },
+  LLM_INVALID_OUTPUT: {
+    title: 'Respuesta del proveedor no válida',
+    detail:
+      'La respuesta no cumplió el formato esperado y no se usó para asignar riesgo ni crear alertas. Puedes reintentarlo manualmente.',
+  },
+};
+
+export function analysisError(code: string | null) {
+  return (
+    errorExplanations[code ?? ''] ?? {
+      title: 'Análisis incompleto',
+      detail:
+        'El análisis no terminó. No hay un nivel de riesgo disponible ni se creó una alerta.',
+    }
+  );
+}
+
+export function ErrorExplanation({ code }: { code: string | null }) {
+  const { title, detail } = analysisError(code);
+  return (
+    <>
+      <h2>{title}</h2>
+      <p>{detail}</p>
+      {code && <p className="error-code">{code}</p>}
+    </>
+  );
+}
+
+export function AlertThresholdNote({ analysis }: { analysis: Analysis }) {
+  const score = analysis.risk_score ?? 0;
+  if (score >= ALERT_THRESHOLD) return null;
+  return (
+    <p className="threshold-note">
+      Riesgo {label(analysis.risk_level).toLowerCase()} ({score}/100): no
+      alcanza el umbral de {ALERT_THRESHOLD} y no genera alerta automática.
+      {analysis.risk_level === 'MEDIUM' &&
+        ' Revisa las señales del correo antes de descartarlo.'}
+    </p>
+  );
+}
+
 export function AnalysisView({ analysis }: { analysis: Analysis }) {
   if (analysis.status === 'ERROR')
     return (
       <section className="panel analysis-error">
-        <h2>Análisis incompleto</h2>
-        <p>El análisis no terminó. No hay un nivel de riesgo disponible.</p>
-        <p className="error-code">{analysis.error_code}</p>
+        <ErrorExplanation code={analysis.error_code} />
       </section>
     );
   return (

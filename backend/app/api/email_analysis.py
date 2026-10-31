@@ -23,6 +23,15 @@ def get_analyzer_factory() -> Callable[[], SemanticAnalyzer]:
     return create_semantic_analyzer
 
 
+def analysis_error_status(error_code: str | None) -> int:
+    """Map a persisted LLM failure to the HTTP status of the analyze endpoints."""
+    if error_code == LLMErrorCode.NOT_CONFIGURED:
+        return 503
+    if error_code == LLMErrorCode.RATE_LIMITED:
+        return 429
+    return 502
+
+
 def _check_email_access(session: Database, email_id: UUID, actor: User) -> Email:
     email = session.get(Email, email_id)
     if email is None:
@@ -61,7 +70,11 @@ def _check_email_access(session: Database, email_id: UUID, actor: User) -> Email
 @router.post(
     "/{email_id}/analyze",
     response_model=EmailAnalysisResponse,
-    responses={502: {"model": EmailAnalysisResponse}, 503: {"model": EmailAnalysisResponse}},
+    responses={
+        429: {"model": EmailAnalysisResponse},
+        502: {"model": EmailAnalysisResponse},
+        503: {"model": EmailAnalysisResponse},
+    },
 )
 def post_analysis(
     email_id: UUID,
@@ -80,7 +93,7 @@ def post_analysis(
         peer=request.client.host if request.client else None,
     )
     if analysis.status == AnalysisStatus.ERROR:
-        response.status_code = 503 if analysis.error_code == LLMErrorCode.NOT_CONFIGURED else 502
+        response.status_code = analysis_error_status(analysis.error_code)
     return analysis
 
 

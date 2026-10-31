@@ -60,6 +60,7 @@ independent known channel when warranted. Never take actions or request tools.
 class LLMErrorCode(StrEnum):
     NOT_CONFIGURED = "LLM_NOT_CONFIGURED"
     TIMEOUT = "LLM_TIMEOUT"
+    RATE_LIMITED = "LLM_RATE_LIMITED"
     PROVIDER_ERROR = "LLM_PROVIDER_ERROR"
     INVALID_OUTPUT = "LLM_INVALID_OUTPUT"
 
@@ -68,6 +69,61 @@ class SemanticAnalysisError(Exception):
     def __init__(self, code: LLMErrorCode):
         self.code = code
         super().__init__(code.value)
+
+
+# Provider SDKs disagree on the spelling of 429/quota exhaustion. Match class
+# names and status metadata only: exception messages may contain keys or prompts.
+_RATE_LIMIT_MARKERS = (
+    "ratelimit",
+    "rate_limit",
+    "toomanyrequests",
+    "too_many_requests",
+    "resourceexhausted",
+    "resource_exhausted",
+    "quotaexceeded",
+    "quota_exceeded",
+)
+_RATE_LIMIT_STATUS = {
+    "429",
+    "TOO_MANY_REQUESTS",
+    "RESOURCE_EXHAUSTED",
+    "QUOTA_EXCEEDED",
+    "RATE_LIMIT_EXCEEDED",
+}
+_STATUS_ATTRIBUTES = ("status_code", "status", "code", "http_status")
+
+
+def _is_rate_limit_status(value: object) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value == 429
+    if isinstance(value, str):
+        return value.strip().upper() in _RATE_LIMIT_STATUS
+    return False
+
+
+def _is_rate_limit_error(error: BaseException) -> bool:
+    """Detect 429/quota errors through names and status metadata, not messages."""
+    current: BaseException | None = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        name = type(current).__name__.lower()
+        if any(marker in name for marker in _RATE_LIMIT_MARKERS):
+            return True
+        if any(
+            _is_rate_limit_status(getattr(current, attribute, None))
+            for attribute in _STATUS_ATTRIBUTES
+        ):
+            return True
+        response = getattr(current, "response", None)
+        if response is not None and _is_rate_limit_status(
+            getattr(response, "status_code", None)
+        ):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 def create_chat_model(settings: LLMSettings) -> BaseChatModel:
@@ -176,4 +232,6 @@ class SemanticAnalyzer:
             # stringify/log exceptions: they may include keys, prompts or output.
             if "timeout" in type(error).__name__.lower():
                 raise SemanticAnalysisError(LLMErrorCode.TIMEOUT) from None
+            if _is_rate_limit_error(error):
+                raise SemanticAnalysisError(LLMErrorCode.RATE_LIMITED) from None
             raise SemanticAnalysisError(LLMErrorCode.PROVIDER_ERROR) from None

@@ -1035,6 +1035,13 @@ summary {
 .analysis-error {
   border-left: 4px solid var(--danger);
 }
+.threshold-note {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid #b98a2e;
+  color: var(--muted);
+  line-height: 1.5;
+}
 .error-code {
   font-size: 0.85rem;
   overflow-wrap: anywhere;

@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError, message } from '../api';
 import { useAuth } from '../auth';
-import { AnalysisHeadline, AnalysisView, EmailContent } from '../analysis';
+import {
+  ALERT_THRESHOLD,
+  AlertThresholdNote,
+  AnalysisHeadline,
+  AnalysisView,
+  EmailContent,
+  ErrorExplanation,
+} from '../analysis';
 import {
   EmptyState,
   ErrorState,
@@ -188,17 +195,13 @@ function ManualAnalysis({ id }: { id: string }) {
             </>
           ) : (
             <section className="panel">
-              <h2>{analysis ? 'Análisis incompleto' : 'Sin análisis'}</h2>
               {analysis ? (
-                <>
-                  <p>
-                    El proveedor no completó el análisis. El riesgo todavía no
-                    está disponible.
-                  </p>
-                  <p className="error-code">{analysis.error_code}</p>
-                </>
+                <ErrorExplanation code={analysis.error_code} />
               ) : (
-                <p>Este correo todavía no tiene una evaluación BEC.</p>
+                <>
+                  <h2>Sin análisis</h2>
+                  <p>Este correo todavía no tiene una evaluación BEC.</p>
+                </>
               )}
               {(user?.role === 'ADMIN' || user?.role === 'ANALYST') && (
                 <button disabled={busy} onClick={() => void analyze()}>
@@ -217,13 +220,11 @@ function ManualAnalysis({ id }: { id: string }) {
   );
 }
 function AnalysisAlertLink({ analysis }: { analysis: Analysis }) {
+  const belowThreshold = (analysis.risk_score || 0) < ALERT_THRESHOLD;
   const resource = useResource<AlertSummary[]>(
-    (analysis.risk_score || 0) >= 70
-      ? `/alerts?analysis_id=${analysis.id}&limit=1`
-      : null,
+    belowThreshold ? null : `/alerts?analysis_id=${analysis.id}&limit=1`,
   );
-  if ((analysis.risk_score || 0) < 70)
-    return <p className="muted">No requiere alerta automática.</p>;
+  if (belowThreshold) return <AlertThresholdNote analysis={analysis} />;
   return resource.loading ? (
     <LoadingState />
   ) : resource.error ? (

@@ -49,8 +49,8 @@ correo ni instalación de una aplicación por empleado.
   La automatización debe identificar el buzón de forma verificable y no permitir
   que un cliente elija arbitrariamente el propietario de un correo.
 - La política actual crea alertas con score >=70; no se ha aprobado cambiar el
-  umbral. El correo sospechoso de prueba obtuvo 59 y no generó alerta, por lo que
-  hay que revisar cómo tratar el riesgo medio antes de depender de esa regla.
+  umbral. La UI explica que MEDIUM (40–69) no genera alerta automática y que el
+  correo queda para revisión manual; falta validar la regla con más datos.
 - Se mantiene la preferencia de **no procesar correos que llegaron mientras el
   workflow estaba apagado**: al iniciar cada receptor se toma un punto de partida
   propio del buzón. Una desconexión IMAP temporal mientras el workflow permanece
@@ -90,8 +90,9 @@ combinan sin conceder acceso a otros correos normales.
   correos existentes y sus 5 análisis; no había alertas. Se conservaron los
   dos usuarios, ejecutivos, proveedores y la bitácora, así como el historial de
   ejecuciones de n8n.
-- La base local se migró hasta `0013_notifications` sin correos históricos.
-  Hay dos usuarios activos y la tabla de avisos in-app creada.
+- La base local se migró hasta `0014_llm_rate_limited_error_code` sin correos
+  históricos. Hay dos usuarios activos, la tabla de avisos in-app y el código de
+  error de límite del proveedor.
 - El workflow IMAP anterior se despublicó para evitar receptores duplicados.
   Los servicios actualizados están sanos; se comprobó el acceso de lectura desde
   el backend a la API de n8n con la llave configurada. El empleado ya conectó
@@ -222,9 +223,11 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
       acciones de marcar uno o todos como leídos. Sin canal externo ni duplicados
       por alerta/destinatario. Guardado en `notifications` (revisión 0013) y
       probado con API y frontend simulados. Sin backfill para alertas anteriores.
-- [ ] **4.5. Riesgo medio y errores:** evaluar la presentación de MEDIUM y del
-      umbral >=70 sin cambiar la política sin evidencia; distinguir 429 y
-      habilitar reintentos explícitos cuando corresponda.
+- [x] **4.5. Riesgo medio y errores:** la UI muestra que MEDIUM (40–69) no genera
+      alerta automática y que el umbral sigue en >=70, sin cambiar la política.
+      Se añadió `LLM_RATE_LIMITED` (HTTP 429) con detección por metadatos del
+      proveedor y mensajes accionables; los reintentos siguen siendo manuales.
+      Revisión 0014 aplicada.
 - [ ] **4.6. Verificación integrada:** probar con datos simulados el recorrido
       empleado → alerta → analista → resolución, sin gastar cuota de IA.
 
@@ -252,7 +255,8 @@ La prueba real con Gmail y Groq continúa en la etapa 5.
   La contraseña inicial la establece ADMIN y el usuario puede cambiarla con la actual.
 - Cifrado y custodia de credenciales IMAP, y mecanismo concreto de receptores por
   usuario sin darles acceso al editor de n8n.
-- Tratamiento de correos sin análisis, análisis fallidos y riesgo medio en la UI.
+- Tratamiento de correos sin análisis y criterios para revisar manualmente los
+  casos MEDIUM que no generan alerta.
 - Cómo presentar y migrar el buzón y los mensajes actuales al empleado propietario.
 - Política exacta de acceso de n8n a datos sensibles y del historial de ejecuciones.
 

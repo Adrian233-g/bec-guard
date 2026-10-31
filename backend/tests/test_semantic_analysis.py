@@ -18,6 +18,36 @@ from app.services.semantic_analysis import (
 )
 
 
+class RateLimitError(Exception):
+    """Mimics an SDK class name without importing a provider."""
+
+
+class TooManyRequestsError(Exception):
+    """Mimics an HTTP wrapper class name without importing a provider."""
+
+
+class ResourceExhausted(Exception):
+    """Mimics a Google quota class name without importing a provider."""
+
+
+class StatusError(Exception):
+    def __init__(self, status_code: object, message: str = "opaque"):
+        self.status_code = status_code
+        super().__init__(message)
+
+
+class ResponseError(Exception):
+    def __init__(self, status_code: object):
+        self.response = type("Response", (), {"status_code": status_code})()
+        super().__init__("opaque")
+
+
+def wrapped(error: BaseException) -> RuntimeError:
+    outer = RuntimeError("opaque")
+    outer.__cause__ = error
+    return outer
+
+
 @pytest.fixture
 def semantic_result():
     return {
@@ -133,6 +163,15 @@ def test_invalid_output(semantic_input, semantic_result, change):
     "failure,expected",
     [
         (TimeoutError("PRIVATE KEY and body"), LLMErrorCode.TIMEOUT),
+        (RateLimitError("PRIVATE KEY and body"), LLMErrorCode.RATE_LIMITED),
+        (TooManyRequestsError("PRIVATE KEY and body"), LLMErrorCode.RATE_LIMITED),
+        (ResourceExhausted("PRIVATE KEY and body"), LLMErrorCode.RATE_LIMITED),
+        (StatusError(429, "PRIVATE KEY and body"), LLMErrorCode.RATE_LIMITED),
+        (StatusError("429", "PRIVATE KEY and body"), LLMErrorCode.RATE_LIMITED),
+        (ResponseError(429), LLMErrorCode.RATE_LIMITED),
+        (wrapped(StatusError(429)), LLMErrorCode.RATE_LIMITED),
+        (RuntimeError("429 PRIVATE KEY and body"), LLMErrorCode.PROVIDER_ERROR),
+        (StatusError(500), LLMErrorCode.PROVIDER_ERROR),
         (RuntimeError("PRIVATE KEY and body"), LLMErrorCode.PROVIDER_ERROR),
         (OutputParserException("PRIVATE KEY and body"), LLMErrorCode.INVALID_OUTPUT),
     ],

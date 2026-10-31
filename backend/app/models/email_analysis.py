@@ -52,7 +52,7 @@ class EmailAnalysis(Base):
         ),
         CheckConstraint("provider IN ('openai', 'google', 'gemini', 'groq')", name="provider"),
         CheckConstraint(
-            "error_code IN ('LLM_NOT_CONFIGURED', 'LLM_TIMEOUT', "
+            "error_code IN ('LLM_NOT_CONFIGURED', 'LLM_TIMEOUT', 'LLM_RATE_LIMITED', "
             "'LLM_PROVIDER_ERROR', 'LLM_INVALID_OUTPUT')",
             name="error_code",
         ),

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AppRoutes } from '../App';
 import { AuthProvider } from '../auth';
-import { tokenKey } from '../api';
+import { ApiError, tokenKey } from '../api';
 import type { Role } from '../types';
 import { alert, email, user, response, summary } from './fixtures';
 const executive = {
@@ -28,7 +28,7 @@ function setup(
   role: Role = 'ADMIN',
   options: {
     empty?: boolean;
-    analysis?: 'missing' | 'error' | 'completed';
+    analysis?: 'missing' | 'error' | 'completed' | 'medium' | 'rate-limited';
     auditError?: boolean;
   } = {},
 ) {
@@ -36,15 +36,32 @@ function setup(
   let analysis =
     options.analysis === 'completed'
       ? alert.analysis
-      : options.analysis === 'error'
+      : options.analysis === 'medium'
         ? {
             ...alert.analysis,
-            status: 'ERROR',
-            risk_score: null,
-            risk_level: null,
-            error_code: 'LLM_TIMEOUT',
+            deterministic_score: 0,
+            semantic_score: 55,
+            risk_score: 55,
+            risk_level: 'MEDIUM',
+            bec_type: null,
           }
-        : null;
+        : options.analysis === 'rate-limited'
+          ? {
+              ...alert.analysis,
+              status: 'ERROR',
+              risk_score: null,
+              risk_level: null,
+              error_code: 'LLM_RATE_LIMITED',
+            }
+          : options.analysis === 'error'
+            ? {
+                ...alert.analysis,
+                status: 'ERROR',
+                risk_score: null,
+                risk_level: null,
+                error_code: 'LLM_TIMEOUT',
+              }
+            : null;
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/auth/me')) return response({ ...user, role });
     if (url.includes('/audit?'))
@@ -132,6 +149,33 @@ it('retry ERROR updates the persisted analysis', async () => {
       ([url, init]) => url.endsWith('/analyze') && init?.method === 'POST',
     ),
   ).toBe(true);
+});
+it('does not create an alert for MEDIUM risk and explains the threshold', async () => {
+  const fetch = setup('/emails/email-1', 'ANALYST', { analysis: 'medium' });
+  await screen.findByText(/Riesgo medio \(55\/100\)/);
+  expect(screen.getByText(/no alcanza el umbral de 70/)).toBeInTheDocument();
+  expect(
+    screen.queryByRole('link', { name: 'Abrir alerta asociada' }),
+  ).not.toBeInTheDocument();
+  expect(
+    fetch.mock.calls.some(([url]) =>
+      url.startsWith('/api/alerts?analysis_id='),
+    ),
+  ).toBe(false);
+});
+it('explains provider rate limiting and keeps the retry manual', async () => {
+  setup('/emails/email-1', 'ANALYST', { analysis: 'rate-limited' });
+  await screen.findByRole('heading', {
+    name: 'Límite de uso del proveedor',
+  });
+  expect(screen.getByText(/no hay reintentos automáticos/)).toBeInTheDocument();
+  expect(screen.getByText('LLM_RATE_LIMITED')).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Reintentar análisis' }),
+  ).toBeInTheDocument();
+});
+it('describes provider rate limiting in API errors', () => {
+  expect(new ApiError(429, null).message).toMatch(/límite de uso/);
 });
 it('provider ERROR is displayed after manual attempt', async () => {
   sessionStorage.setItem(tokenKey, 't');

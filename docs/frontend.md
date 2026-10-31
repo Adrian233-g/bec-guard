@@ -55,6 +55,20 @@ extra, la página posterior puede estar vacía. Todas las vistas incluyen loadin
 empty y error con feedback o reintento. Los 400 muestran validación genérica porque
 el backend no refleja valores del request; 409 informa conflicto y refresca alertas.
 
+## Riesgo medio y errores de análisis
+
+La política no cambia: solo un análisis COMPLETED con puntaje >=70 genera alerta.
+La vista de análisis muestra el nivel y, cuando el puntaje queda por debajo del
+umbral, una nota explícita indica que no hubo alerta automática. Para MEDIUM
+(40–69) añade que conviene revisar las señales antes de descartar el correo; el
+dashboard repite que ese rango queda para revisión manual.
+
+Los códigos de error se traducen a títulos y explicaciones en español, sin ocultar
+el código persistido: configuración ausente (503), timeout, fallo del proveedor,
+salida inválida y límite de uso (429). El 429 informa que no hay reintentos
+automáticos y que la persona debe esperar antes de pulsar **Reintentar análisis**.
+El panel de error conserva el botón manual solo para ADMIN/ANALYST.
+
 ## Permisos y HITL
 
 ADMIN/MANAGER crean, editan y activan/desactivan contexto. ANALYST/AUDITOR lo

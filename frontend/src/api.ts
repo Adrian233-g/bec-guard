@@ -15,7 +15,9 @@ export class ApiError extends Error {
               ? 'Revisa los campos y vuelve a intentarlo.'
               : status === 401
                 ? 'La sesión terminó. Inicia sesión de nuevo.'
-                : 'El servicio no está disponible. Vuelve a intentarlo.',
+                : status === 429
+                  ? 'El proveedor de IA alcanzó su límite de uso. Espera un momento y reintenta manualmente.'
+                  : 'El servicio no está disponible. Vuelve a intentarlo.',
     );
   }
 }

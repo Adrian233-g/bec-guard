@@ -9,6 +9,7 @@ import {
   label,
 } from '../components';
 import type { AlertSummary, Dashboard as DashboardData } from '../types';
+import { ALERT_THRESHOLD } from '../analysis';
 import { useResource } from '../useResource';
 export function Dashboard() {
   const resource = useResource<DashboardData>('/dashboard/summary');
@@ -87,7 +88,11 @@ function DashboardContent({ data }: { data: DashboardData }) {
       <div className="dashboard-grid">
         <section className="panel">
           <h2>Distribución de riesgo</h2>
-          <p className="muted">Solo análisis completados</p>
+          <p className="muted">
+            Solo análisis completados. Desde {ALERT_THRESHOLD}/100 se genera una
+            alerta automática; el riesgo medio (40–69) queda para revisión
+            manual.
+          </p>
           <ul className="bar-list">
             {risks.map(([risk, count]) => (
               <li key={risk}>

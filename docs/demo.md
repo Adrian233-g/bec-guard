@@ -40,7 +40,9 @@ Entra con tu cuenta y abre **Correos**. Los ejemplos aparecen como `[DEMO 01]`
 hasta `[DEMO 12]`. Abre un correo y pulsa **Analizar correo**:
 reglas/contexto → Google/LangChain → scoring → análisis persistido. Si el resultado
 es HIGH/CRITICAL, el backend crea la alerta correspondiente. ERROR conserva riesgo
-null y permite retry; COMPLETED se reutiliza sin otro gasto LLM.
+null y permite retry; COMPLETED se reutiliza sin otro gasto LLM. Si aparece un 429,
+la clave alcanzó su cuota o límite: espera y usa **Reintentar análisis**; no hay
+reintentos automáticos. Un riesgo MEDIUM no crea alerta y la interfaz lo indica.
 
 | Correo | Situación ficticia |
 | --- | --- |

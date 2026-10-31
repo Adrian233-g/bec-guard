@@ -132,6 +132,7 @@ def test_completed_analysis_persisted_idempotent_and_audited(
     [
         (LLMErrorCode.NOT_CONFIGURED, 503),
         (LLMErrorCode.TIMEOUT, 502),
+        (LLMErrorCode.RATE_LIMITED, 429),
         (LLMErrorCode.PROVIDER_ERROR, 502),
         (LLMErrorCode.INVALID_OUTPUT, 502),
     ],

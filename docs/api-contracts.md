@@ -110,14 +110,17 @@ locales están en [política BEC](bec-analysis.md#scoring-híbrido-hybrid-v1).
 ## Fallo semántico
 
 POST devuelve HTTP 502 para timeout, fallo del proveedor o salida inválida; 503
-para configuración ausente/inválida. El cuerpo es EmailAnalysisResponse con
-status ERROR, error_code LLM_TIMEOUT / LLM_PROVIDER_ERROR / LLM_INVALID_OUTPUT /
-LLM_NOT_CONFIGURED. Conserva deterministic_score y señales RULE/CONTEXT. Los
-campos semántico/final, risk_level, bec_type, summary y recommended_action son null.
+para configuración ausente/inválida; y 429 cuando el proveedor informa cuota
+agotada o límite de peticiones. El cuerpo es EmailAnalysisResponse con status
+ERROR y error_code LLM_TIMEOUT / LLM_RATE_LIMITED / LLM_PROVIDER_ERROR /
+LLM_INVALID_OUTPUT / LLM_NOT_CONFIGURED. Conserva deterministic_score y señales
+RULE/CONTEXT. Los campos semántico/final, risk_level, bec_type, summary y
+recommended_action son null.
 
 **ERROR no es LOW ni LEGITIMATE ni score cero.** El resultado ERROR y
 EMAIL_ANALYSIS_FAILED quedan persistidos y pueden consultarse después. Repetir
-POST permite retry; no hay retry automático ni fallback a otro proveedor.
+POST permite retry; no hay retry automático ni fallback a otro proveedor. Un 429
+solo describe el límite del proveedor: la persona decide cuándo reintentar.
 
 Un fallo de persistencia/auditoría devuelve el 503 genérico `Database unavailable`
 y revierte el intento. Ese error de infraestructura no tiene el contrato de un
@@ -160,8 +163,9 @@ El POST humano conserva 409. La carrera UNIQUE recupera el ganador persistido.
 
 Misma autenticación. Reutiliza analyze_email y devuelve
 `{analysis: EmailAnalysisResponse, alert_id: UUID|null}`. COMPLETED HIGH/CRITICAL
-incluye alert_id; LOW/MEDIUM y ERROR lo dejan null. HTTP 200 COMPLETED, 502 fallo
-LLM, 503 falta de configuración, 404 Email inexistente. ERROR nunca significa LOW.
+incluye alert_id; LOW/MEDIUM y ERROR lo dejan null. HTTP 200 COMPLETED, 429 límite
+del proveedor, 502 fallo LLM, 503 falta de configuración, 404 Email inexistente.
+ERROR nunca significa LOW.
 Retry explícito actualiza el mismo análisis; COMPLETED reutiliza resultado/alerta.
 
 La API key se carga lazy, SecretStr y compare_digest. Ausente/corta (<32) en

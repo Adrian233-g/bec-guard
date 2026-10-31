@@ -27,7 +27,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
     }
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0013_notifications"
+            "0014_llm_rate_limited_error_code"
         )
 
     migration_runner(command.downgrade, "0007_bec_alerts")
@@ -225,7 +225,51 @@ def test_role_migration_refuses_downgrade_with_employee_history(
         migration_runner(command.downgrade, "0008_alert_hitl_constraints")
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0013_notifications"
+            "0014_llm_rate_limited_error_code"
+        )
+
+
+def test_rate_limit_code_refuses_downgrade_before_0013(
+    migrated_engine, migration_runner, db_session
+):
+    user_id, mailbox_id, email_id, analysis_id = uuid4(), uuid4(), uuid4(), uuid4()
+    with migrated_engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO public.users (id, name, email, password_hash, role) "
+                "VALUES (:id, 'Rate', 'rate-0014@example.com', 'hash', 'EMPLOYEE')"
+            ),
+            {"id": user_id},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.mailboxes (id, user_id, email_address, status) "
+                "VALUES (:id, :owner, 'rate-0014@gmail.com', 'ACTIVE')"
+            ),
+            {"id": mailbox_id, "owner": user_id},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.emails (id, mailbox_id, message_id, sender_email, subject, "
+                "body_text, to_recipients, cc_recipients, received_at) "
+                "VALUES (:id, :mb, '<rate-0014@example.com>', 's@example.com', "
+                "'subject', 'body', '[]', '[]', NOW())"
+            ),
+            {"id": email_id, "mb": mailbox_id},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO public.email_analysis (id, email_id, status, deterministic_score, "
+                "signals, policy_version, error_code, analyzed_at) "
+                "VALUES (:id, :email, 'ERROR', 0, '[]', 'det-v1', 'LLM_RATE_LIMITED', NOW())"
+            ),
+            {"id": analysis_id, "email": email_id},
+        )
+    with pytest.raises(RuntimeError, match="LLM_RATE_LIMITED"):
+        migration_runner(command.downgrade, "0013_notifications")
+    with migrated_engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
+            "0014_llm_rate_limited_error_code"
         )
 
 

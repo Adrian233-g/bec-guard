@@ -132,6 +132,11 @@ no borra evidencia local fuerte. No hay ML, entrenamiento ni calibración estad�
 | 70–84 | HIGH |
 | 85–100 | CRITICAL |
 
+Solo HIGH y CRITICAL (score >=70) crean BECAlert. MEDIUM (40–69) no genera
+alerta automática: la UI lo indica y deja el correo para revisión manual. Cambiar
+ese umbral requiere evidencia y una decisión explícita; la política vigente no lo
+modifica.
+
 El motor determinista sugiere un tipo, en este orden cuando coexisten señales:
 BANK_ACCOUNT_CHANGE, SENSITIVE_DATA_REQUEST, EXECUTIVE_IMPERSONATION, VENDOR_FRAUD.
 El resultado final usa null bajo 40; desde 40 prefiere ese tipo local y, si no
@@ -180,7 +185,7 @@ key acotada, sin sustituir RBAC/JWT humano. Ver [alertas y orquestación](alerts
 
 | Ruta | Permiso | Resultado |
 | --- | --- | --- |
-| POST /api/emails/{email_id}/analyze | ADMIN, MANAGER, ANALYST | 200 COMPLETED; 502/503 ERROR persistido. AUDITOR recibe 403. |
+| POST /api/emails/{email_id}/analyze | ADMIN, MANAGER, ANALYST | 200 COMPLETED; 429/502/503 ERROR persistido. AUDITOR recibe 403. |
 | GET /api/emails/{email_id}/analysis | Todos los roles autenticados | 200 para COMPLETED o ERROR; 404 sin Email/análisis. |
 
 Token ausente/inválido o usuario inactivo: 401. UUID inválido: 400. Email
@@ -190,8 +195,14 @@ inexistente: 404 antes de configurar LLM. RBAC usa siempre el User actual en DB.
 | --- | --- |
 | LLM_NOT_CONFIGURED | 503 |
 | LLM_TIMEOUT | 502 |
+| LLM_RATE_LIMITED | 429 |
 | LLM_PROVIDER_ERROR | 502 |
 | LLM_INVALID_OUTPUT | 502 |
+
+La detección de 429 usa metadatos del proveedor (clase y estado
+`429`/`TOO_MANY_REQUESTS`/`RESOURCE_EXHAUSTED`), nunca el texto del error, que
+podría contener claves o prompts. No hay backoff ni reintento automático: la API
+persiste el ERROR y el reintento sigue siendo un POST explícito.
 
 ERROR conserva deterministic_score y señales RULE/CONTEXT. semantic_score,
 risk_score, risk_level, bec_type, summary y recommended_action quedan null;

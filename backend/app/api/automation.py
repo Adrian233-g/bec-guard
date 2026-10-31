@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import select
 
 from app.api.dependencies import get_automation_settings, require_automation_key
-from app.api.email_analysis import get_analyzer_factory
+from app.api.email_analysis import analysis_error_status, get_analyzer_factory
 from app.api.emails import Database
 from app.core.config import AutomationSettings
 from app.models import BECAlert, Email, Mailbox, MailboxConnection, User
@@ -15,7 +15,7 @@ from app.schemas.automation import AutomationAnalysisResponse, AutomationIngestR
 from app.schemas.email import EmailIngestRequest
 from app.services.email_analysis import analyze_email
 from app.services.email_ingestion import ingest_email_idempotently
-from app.services.semantic_analysis import LLMErrorCode, SemanticAnalyzer
+from app.services.semantic_analysis import SemanticAnalyzer
 
 router = APIRouter(
     prefix="/api/automation/emails",
@@ -85,6 +85,7 @@ def ingest(
     "/{email_id}/analyze",
     response_model=AutomationAnalysisResponse,
     responses={
+        429: {"model": AutomationAnalysisResponse},
         502: {"model": AutomationAnalysisResponse},
         503: {"model": AutomationAnalysisResponse},
     },
@@ -111,7 +112,7 @@ def analyze(
     )
     alert_id = None
     if analysis.status == AnalysisStatus.ERROR:
-        response.status_code = 503 if analysis.error_code == LLMErrorCode.NOT_CONFIGURED else 502
+        response.status_code = analysis_error_status(analysis.error_code)
     else:
         alert_id = session.scalar(select(BECAlert.id).where(BECAlert.analysis_id == analysis.id))
     return {"analysis": analysis, "alert_id": alert_id}
