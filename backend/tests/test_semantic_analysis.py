@@ -200,3 +200,55 @@ def test_bank_redaction_keeps_json_valid(semantic_input, semantic_result):
     SemanticAnalyzer(LLMSettings(_env_file=None), lambda _: fake).assess(email, det, context)
     payload = json.loads(fake.messages[1].content.split("\n")[1])
     assert payload["body_text"] == "Known [KNOWN_BANK_REFERENCE_REDACTED] with case differences"
+
+
+@pytest.mark.parametrize("output", ["valid", "invalid_json", "invalid_score"])
+def test_google_sdk_response_boundary_without_network(
+    monkeypatch, semantic_input, semantic_result, output, caplog
+):
+    from google.genai import types
+
+    settings = LLMSettings(
+        _env_file=None,
+        llm_provider="google",
+        llm_model="gemini-3.5-flash-lite",
+        google_api_key="offline-test-key",
+    )
+    chat = create_chat_model(settings)
+    payload = dict(semantic_result)
+    if output == "invalid_score":
+        payload["risk_score"] = "PRIVATE-PROVIDER-VALUE"
+        payload["PRIVATE-EXTRA-FIELD"] = "PRIVATE-EXTRA-VALUE"
+    encoded = "PRIVATE-NON-JSON" if output == "invalid_json" else json.dumps(payload)
+    response = types.GenerateContentResponse(
+        candidates=[
+            types.Candidate(
+                content=types.Content(role="model", parts=[types.Part(text=encoded)]),
+                finish_reason="STOP",
+            )
+        ]
+    )
+    requests = []
+
+    def generate_content(**request):
+        requests.append(request)
+        return response
+
+    monkeypatch.setattr(chat.client.models, "generate_content", generate_content)
+    analyzer = SemanticAnalyzer(settings, lambda _: chat)
+    if output == "valid":
+        assert analyzer.assess(*semantic_input) == SemanticAssessment(**semantic_result)
+    else:
+        with pytest.raises(SemanticAnalysisError) as error:
+            analyzer.assess(*semantic_input)
+        assert error.value.code == LLMErrorCode.INVALID_OUTPUT
+        assert "Semantic output rejected" in caplog.text
+        assert "PRIVATE" not in caplog.text
+        if output == "invalid_score":
+            assert "fields=risk_score" in caplog.text
+    assert len(requests) == 1
+    config = requests[0]["config"]
+    assert config.response_mime_type == "application/json"
+    assert config.response_json_schema == SemanticAssessment.model_json_schema()
+    assert not config.tools
+    assert "offline-test-key" not in caplog.text

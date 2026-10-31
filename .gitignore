@@ -30,6 +30,7 @@ n8n/data/
 
 # Local tools and editor files
 .agents/
+skills-lock.json
 .codex/
 .aws/
 .idea/
