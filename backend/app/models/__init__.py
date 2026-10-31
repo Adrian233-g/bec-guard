@@ -8,6 +8,7 @@ from app.models.email_analysis import EmailAnalysis
 from app.models.enums import Role
 from app.models.executive_contact import ExecutiveContact
 from app.models.mailbox import Mailbox
+from app.models.mailbox_connection import MailboxConnection
 from app.models.user import User
 from app.models.vendor import Vendor
 
@@ -19,6 +20,7 @@ __all__ = [
     "EmailAnalysis",
     "ExecutiveContact",
     "Mailbox",
+    "MailboxConnection",
     "Role",
     "User",
     "Vendor",

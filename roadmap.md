@@ -163,7 +163,11 @@ La migración y el conector existente requieren configuración explícita: ver
       aprovisionar las credenciales y workflows desde la aplicación y gestionar
       su ciclo de vida. Hay primitivas probadas contra una API n8n simulada para
       crear, verificar, publicar y eliminar recursos; falta conectarlas con la API,
-      persistir los pasos y reconciliar fallos. Aún no hay conexión operativa.
+      integrar la persistencia de pasos y reconciliar fallos. La revisión 0012
+      añade un registro sin secretos y transiciones que bloquean el avance ante
+      resultados inciertos. Las claves quedan vinculadas a una conexión concreta:
+      al desactivarla o sustituirla, la clave anterior deja de funcionar. Falta
+      integrar todo el ciclo de vida; aún no hay conexión operativa.
 - [ ] Garantizar el punto de partida independiente por buzón y la regla de omitir
       correos recibidos mientras el workflow estaba apagado. Adaptar el ajuste actual
       de n8n a los receptores generados. El ajuste tiene pruebas simuladas por

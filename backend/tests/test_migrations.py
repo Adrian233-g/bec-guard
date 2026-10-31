@@ -18,6 +18,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
         "executive_contacts",
         "vendors",
         "mailboxes",
+        "mailbox_connections",
         "emails",
         "email_analysis",
         "bec_alerts",
@@ -25,7 +26,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
     }
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0011_mailbox_verification"
+            "0012_mailbox_connection_progress"
         )
 
     migration_runner(command.downgrade, "0007_bec_alerts")
@@ -70,6 +71,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
         "executive_contacts",
         "vendors",
         "mailboxes",
+        "mailbox_connections",
         "emails",
         "email_analysis",
         "bec_alerts",
@@ -221,7 +223,7 @@ def test_role_migration_refuses_downgrade_with_employee_history(
         migration_runner(command.downgrade, "0008_alert_hitl_constraints")
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0011_mailbox_verification"
+            "0012_mailbox_connection_progress"
         )
 
 

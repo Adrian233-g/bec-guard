@@ -9,7 +9,7 @@ from app.api.dependencies import get_automation_settings, require_automation_key
 from app.api.email_analysis import get_analyzer_factory
 from app.api.emails import Database
 from app.core.config import AutomationSettings
-from app.models import BECAlert, Email, Mailbox, User
+from app.models import BECAlert, Email, Mailbox, MailboxConnection, User
 from app.models.enums import AnalysisStatus
 from app.schemas.automation import AutomationAnalysisResponse, AutomationIngestResponse
 from app.schemas.email import EmailIngestRequest
@@ -22,18 +22,31 @@ router = APIRouter(
     tags=["n8n automation"],
 )
 Settings = Annotated[AutomationSettings, Depends(get_automation_settings)]
-ConnectorMailbox = Annotated[UUID | None, Depends(require_automation_key)]
+ConnectorMailbox = Annotated[tuple[UUID, UUID] | None, Depends(require_automation_key)]
 
 
 def _trusted_mailbox(
-    session: Database, settings: AutomationSettings, connector_mailbox: UUID | None
+    session: Database, settings: AutomationSettings, connector_mailbox: tuple[UUID, UUID] | None
 ) -> Mailbox:
     # The key is scoped server-side to ONE mailbox. The
     # email headers, payload and query parameters never choose its owner.
     try:
-        mailbox_id = connector_mailbox or UUID(settings.automation_mailbox_id.strip())
+        mailbox_id = (
+            connector_mailbox[0]
+            if connector_mailbox
+            else UUID(settings.automation_mailbox_id.strip())
+        )
     except ValueError, AttributeError:
         raise HTTPException(503, "Automation mailbox not configured") from None
+    if connector_mailbox is not None:
+        connection = session.get(MailboxConnection, connector_mailbox[1])
+        if (
+            connection is None
+            or connection.mailbox_id != mailbox_id
+            or connection.stage != "active"
+            or connection.needs_reconciliation
+        ):
+            raise HTTPException(503, "Automation mailbox unavailable")
     mailbox = session.get(Mailbox, mailbox_id)
     owner = session.get(User, mailbox.user_id) if mailbox else None
     if not mailbox or mailbox.status != "ACTIVE" or not owner or not owner.is_active:

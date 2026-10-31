@@ -12,6 +12,8 @@ dueño a partir de los campos To/Cc ni acepta que el workflow lo especifique. Si
 variable falta, el buzón no está activo o su dueño está desactivado, la API rechaza
 la ingestión y el análisis. La API también admite credenciales derivadas limitadas a un buzón concreto,
 pero aún falta aprovisionarlas y administrar sus receptores desde la aplicación.
+Cada clave derivada se vincula además a una conexión concreta activa; al
+desactivarla, sustituirla o marcarla para reconciliación, deja de aceptarse.
 
 ## Instalaciones anteriores a 0010 con correos existentes
 
@@ -67,3 +69,9 @@ La creación de receptores desde la app todavía no está integrada. El módulo
 y gestione resultados inciertos antes de reintentar. No usarlo directamente en
 una instancia real sin ese mecanismo de recuperación y sin completar la
 integración de permisos y ciclo de vida.
+
+La revisión `0012_mailbox_connection_progress` agrega `mailbox_connections`
+para guardar los IDs de recursos y la última etapa confirmada sin almacenar
+contraseñas ni tokens. Si un resultado remoto es incierto, el registro puede
+marcarse para reconciliación y no permite avanzar automáticamente. Estas piezas
+aún no ejecutan el aprovisionador ni hacen recuperación por sí solas.

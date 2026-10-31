@@ -461,7 +461,7 @@ def test_each_connector_is_scoped_to_its_own_mailbox(
     api_client, automation_setup, db_session, account, analysis_stub
 ):
     from app.core.connector_tokens import connector_token
-    from app.models import Role, User
+    from app.models import MailboxConnection, Role, User
 
     headers, payload = automation_setup
     master = headers["X-BEC-Automation-Key"]
@@ -478,9 +478,29 @@ def test_each_connector_is_scoped_to_its_own_mailbox(
         status="ACTIVE",
     )
     db_session.add(other_mailbox)
+    db_session.flush()
+    owner_connection = MailboxConnection(
+        mailbox_id=owner_mailbox.id,
+        stage="active",
+        imap_credential_id="ownerimap",
+        automation_credential_id="ownerauth",
+        workflow_id="ownerwf",
+    )
+    other_connection = MailboxConnection(
+        mailbox_id=other_mailbox.id,
+        stage="active",
+        imap_credential_id="otherimap",
+        automation_credential_id="otherauth",
+        workflow_id="otherwf",
+    )
+    db_session.add_all([owner_connection, other_connection])
     db_session.commit()
-    owner_key = {"X-BEC-Automation-Key": connector_token(master, owner_mailbox.id)}
-    other_key = {"X-BEC-Automation-Key": connector_token(master, other_mailbox.id)}
+    owner_key = {
+        "X-BEC-Automation-Key": connector_token(master, owner_mailbox.id, owner_connection.id)
+    }
+    other_key = {
+        "X-BEC-Automation-Key": connector_token(master, other_mailbox.id, other_connection.id)
+    }
     first = api_client.post("/api/automation/emails", json=payload, headers=owner_key)
     second = api_client.post("/api/automation/emails", json=payload, headers=other_key)
     assert first.status_code == second.status_code == 201
@@ -494,9 +514,9 @@ def test_each_connector_is_scoped_to_its_own_mailbox(
     )
     assert analysis_stub.calls == 0
     forged = {
-        "X-BEC-Automation-Key": connector_token(master, owner_mailbox.id).replace(
-            owner_mailbox.id.hex, other_mailbox.id.hex
-        )
+        "X-BEC-Automation-Key": connector_token(
+            master, owner_mailbox.id, owner_connection.id
+        ).replace(owner_mailbox.id.hex, other_mailbox.id.hex)
     }
     assert (
         api_client.post("/api/automation/emails", json=payload, headers=forged).status_code == 401
@@ -505,5 +525,67 @@ def test_each_connector_is_scoped_to_its_own_mailbox(
     db_session.commit()
     assert (
         api_client.post("/api/automation/emails", json=payload, headers=other_key).status_code
+        == 503
+    )
+
+
+def test_connector_key_is_revoked_by_connection_state(
+    api_client, automation_setup, db_session, account
+):
+    from app.core.connector_tokens import connector_token
+    from app.models import MailboxConnection
+
+    headers, payload = automation_setup
+    mailbox = db_session.scalar(select(Mailbox).where(Mailbox.user_id == account.id))
+    connection = MailboxConnection(
+        mailbox_id=mailbox.id,
+        stage="active",
+        imap_credential_id="imap",
+        automation_credential_id="auth",
+        workflow_id="workflow",
+    )
+    db_session.add(connection)
+    db_session.commit()
+    token = connector_token(headers["X-BEC-Automation-Key"], mailbox.id, connection.id)
+    scoped_headers = {"X-BEC-Automation-Key": token}
+    assert (
+        api_client.post("/api/automation/emails", json=payload, headers=scoped_headers).status_code
+        == 201
+    )
+    connection.stage = "workflow-unpublished"
+    db_session.commit()
+    assert (
+        api_client.post("/api/automation/emails", json=payload, headers=scoped_headers).status_code
+        == 503
+    )
+    db_session.delete(connection)
+    db_session.flush()
+    replacement = MailboxConnection(
+        mailbox_id=mailbox.id,
+        stage="active",
+        imap_credential_id="imap2",
+        automation_credential_id="auth2",
+        workflow_id="workflow2",
+    )
+    db_session.add(replacement)
+    db_session.commit()
+    assert (
+        api_client.post("/api/automation/emails", json=payload, headers=scoped_headers).status_code
+        == 503
+    )
+    new_token = connector_token(headers["X-BEC-Automation-Key"], mailbox.id, replacement.id)
+    assert new_token != token
+    assert (
+        api_client.post(
+            "/api/automation/emails", json=payload, headers={"X-BEC-Automation-Key": new_token}
+        ).status_code
+        == 200
+    )
+    replacement.needs_reconciliation = True
+    db_session.commit()
+    assert (
+        api_client.post(
+            "/api/automation/emails", json=payload, headers={"X-BEC-Automation-Key": new_token}
+        ).status_code
         == 503
     )

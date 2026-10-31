@@ -29,16 +29,16 @@ def get_automation_settings() -> AutomationSettings:
 def require_automation_key(
     key: Annotated[str | None, Depends(automation_header)],
     settings: Annotated[AutomationSettings, Depends(get_automation_settings)],
-) -> UUID | None:
+) -> tuple[UUID, UUID] | None:
     expected = settings.automation_api_key.get_secret_value()
     if len(expected) < 32:
         raise HTTPException(503, "Automation unavailable")
     if secrets.compare_digest((key or "").encode("utf-8"), expected.encode("utf-8")):
         return None  # Legacy key remains bound to AUTOMATION_MAILBOX_ID.
-    mailbox_id = verify_connector_token(expected, key or "")
-    if mailbox_id is None:
+    identity = verify_connector_token(expected, key or "")
+    if identity is None:
         raise HTTPException(401, "Invalid automation credentials")
-    return mailbox_id
+    return identity
 
 
 def get_auth_settings(request: Request) -> AuthSettings:

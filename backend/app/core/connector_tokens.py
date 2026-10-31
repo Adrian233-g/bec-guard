@@ -1,29 +1,30 @@
-"""Derive a separate automation credential for each trusted mailbox connector."""
+"""Derive a credential scoped to one specific mailbox connection generation."""
 
 import hashlib
 import hmac
 from uuid import UUID
 
 
-def connector_token(master_key: str, mailbox_id: UUID) -> str:
+def connector_token(master_key: str, mailbox_id: UUID, connection_id: UUID) -> str:
     if len(master_key) < 32:
         raise ValueError("Automation key must contain at least 32 characters")
-    identity = mailbox_id.hex
+    identity = f"{mailbox_id.hex}.{connection_id.hex}"
     signature = hmac.new(
-        master_key.encode(), b"bec-guard-connector-v1:" + identity.encode(), hashlib.sha256
+        master_key.encode(), b"bec-guard-connector-v2:" + identity.encode(), hashlib.sha256
     ).hexdigest()
-    return f"bg1.{identity}.{signature}"
+    return f"bg2.{identity}.{signature}"
 
 
-def verify_connector_token(master_key: str, token: str) -> UUID | None:
+def verify_connector_token(master_key: str, token: str) -> tuple[UUID, UUID] | None:
     parts = token.split(".")
-    if len(parts) != 3 or parts[0] != "bg1" or len(parts[1]) != 32:
+    if len(parts) != 4 or parts[0] != "bg2" or len(parts[1]) != 32 or len(parts[2]) != 32:
         return None
     try:
         mailbox_id = UUID(hex=parts[1])
-        expected = connector_token(master_key, mailbox_id)
+        connection_id = UUID(hex=parts[2])
+        expected = connector_token(master_key, mailbox_id, connection_id)
     except ValueError:
         return None
     if not hmac.compare_digest(token.encode("utf-8"), expected.encode("utf-8")):
         return None
-    return mailbox_id
+    return mailbox_id, connection_id
