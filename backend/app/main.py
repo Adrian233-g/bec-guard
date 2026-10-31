@@ -15,6 +15,7 @@ from app.api.health import router as health_router
 from app.api.organizational_context import router as context_router
 from app.api.product import router as product_router
 from app.api.reports import router as reports_router
+from app.api.users import router as users_router
 from app.core.config import AuthSettings, Settings
 from app.core.database import create_database_engine, create_session_factory
 
@@ -48,6 +49,7 @@ def create_app(
     application.include_router(product_router)
     application.include_router(health_router)
     application.include_router(auth_router)
+    application.include_router(users_router)
     application.include_router(context_router)
     application.include_router(emails_router)
     application.include_router(analysis_router)

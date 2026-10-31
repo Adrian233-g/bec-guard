@@ -85,8 +85,8 @@ combinan sin conceder acceso a otros correos normales.
 - [x] Aplicación React, API FastAPI, PostgreSQL y n8n; autenticación y RBAC básicos.
 - [x] Código y migración para ADMIN, ANALYST y EMPLOYEE; cada cuenta tiene un rol.
       Los roles MANAGER y AUDITOR se preservan en eventos históricos de auditoría.
-      La migración se validó en PostgreSQL aislado; aplicar la revisión 0009 a la
-      instancia existente al actualizar sus contenedores.
+      La migración se validó en PostgreSQL aislado y se aplicó a la instancia local
+      el 2026-10-31; otras instalaciones deben aplicar la revisión 0009.
 - [x] Contactos ejecutivos/proveedores, ingestión, análisis híbrido con LangChain,
       alertas >=70, cola y revisión humana; bitácora y reportes operativos.
 - [x] Un Gmail conectado manualmente a un workflow n8n mediante IMAP. Se probó
@@ -98,9 +98,11 @@ combinan sin conceder acceso a otros correos normales.
       Tiene pruebas locales y el trigger arrancó; falta probar de extremo a extremo
       un correo recibido con Docker apagado y el funcionamiento con varios buzones.
 - [x] Rol EMPLOYEE con acceso provisional restringido hasta implementar propiedad.
-- [ ] Gestión de usuarios y permisos por dueño.
-- [ ] Asociación explícita usuario → buzón → correo; actualmente todos los roles
-      autenticados pueden consultar los correos guardados.
+- [x] Gestión de usuarios por ADMIN y cambio de contraseña por cada usuario en el
+      código; reconstruir los contenedores locales para usar esta funcionalidad.
+- [ ] Permisos por dueño de buzón.
+- [ ] Asociación explícita usuario → buzón → correo; actualmente ADMIN y ANALYST
+      comparten acceso a los correos guardados y EMPLOYEE aún no puede leerlos.
 - [ ] Conexión individual de Gmail desde la aplicación y múltiples receptores.
 - [ ] Notificaciones automáticas a empleados/seguridad: la cola en la app no es
       equivalente al envío de un aviso.
@@ -113,12 +115,12 @@ combinan sin conceder acceso a otros correos normales.
 - [x] Diseñar e implementar la migración de roles a ADMIN / ANALYST / EMPLOYEE, conservando
       la integridad de la bitácora histórica y sin convertir cuentas existentes de
       forma silenciosa. Documentar y resolver los usuarios con roles retirados.
-- [ ] Implementar gestión por ADMIN: crear usuarios, asignar rol, consultar y
+- [x] Implementar gestión por ADMIN: crear usuarios, asignar rol, consultar y
       activar/desactivar cuentas. Definir una forma segura de establecer credenciales
       iniciales; nunca registrar contraseñas ni mostrar hashes.
-- [ ] Añadir pantallas de gestión y una experiencia de inicio para EMPLOYEE.
-- [ ] Comprobar en backend y frontend que los roles autorizan las acciones de la
-      matriz y que un usuario desactivado pierde acceso.
+- [x] Añadir pantallas de gestión y una experiencia de inicio provisional para EMPLOYEE.
+- [x] Comprobar gestión de usuarios y que un usuario desactivado pierde acceso.
+- [ ] Completar la matriz de permisos por propietario y verificarla en la etapa 2.
 
 **Terminado cuando:** el administrador puede crear un analista y un empleado sin
 usar SQL manual, y los permisos de cada rol se verifican en el servidor.
@@ -201,7 +203,8 @@ aviso definido y un analista puede investigar y cerrar el caso con trazabilidad.
 
 ## Pendiente de definir antes de implementar cada parte
 
-- Mecanismo de credenciales iniciales y recuperación de las cuentas BEC Guard.
+- Recuperación de contraseñas olvidadas y revocación inmediata de sesiones.
+  La contraseña inicial la establece ADMIN y el usuario puede cambiarla con la actual.
 - Cifrado y custodia de credenciales IMAP, y mecanismo concreto de receptores por
   usuario sin darles acceso al editor de n8n.
 - Canal de avisos a empleados y seguridad y reglas para evitar duplicados.

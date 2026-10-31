@@ -50,6 +50,7 @@ Documentación:
 - [Contratos de APIs y revisión humana](docs/api-contracts.md)
 - [Persistencia, migraciones y base de pruebas](docs/persistence.md)
 - [Autenticación, bootstrap ADMIN, JWT, RBAC y auditoría](docs/authentication.md)
+- [Gestión de usuarios y contraseñas](docs/user-management.md)
 - [Contexto organizacional, endpoints, permisos y lookups](docs/organizational-context.md)
 - [Ingestión de emails, parser MIME y privacidad](docs/email-ingestion.md)
 - [Dataset sintético, splits y validación](docs/dataset.md)
@@ -225,7 +226,7 @@ y otro ADMIN existente.
 
 La API ofrece `POST /api/auth/login` (JSON email/password) y `GET /api/auth/me`
 (Bearer). El token de acceso dura 30 minutos por defecto; rol y estado activo se
-consultan en PostgreSQL en cada petición. No hay refresh tokens ni registro público.
+consultan en PostgreSQL en cada petición. No hay refresh tokens ni registro público. ADMIN gestiona cuentas en `/users`; cada usuario puede cambiar su contraseña en `/account`.
 Consulta los [contratos y ejemplos curl](docs/authentication.md#contratos-http).
 
 ## Migraciones
@@ -410,7 +411,7 @@ referencias bancarias. ANALYST no tiene acceso. Ver [alcance y privacidad](docs/
 ## Pendiente tras Fase 8
 
 Fase 6 añade BECAlert automática, lectura de alertas, API key acotada y workflow
-Webhook n8n. Fase 7 añade frontend funcional e HITL. Quedan pendientes CRUD de usuarios, recuperación, refresh tokens y notificaciones.
+Webhook n8n. Fase 7 añade frontend funcional e HITL. Quedan pendientes recuperación de contraseñas, refresh tokens y notificaciones.
 Gmail puede conectarse por IMAP con contraseña de aplicación; los correos
 recibidos mientras el workflow está apagado se omiten al iniciarlo; Microsoft Graph
 no está integrado.

@@ -23,6 +23,6 @@ ANALYST solo puede liberar o resolver los casos que tomó; ADMIN puede supervisa
 casos ajenos. Esta vista compartida es una limitación temporal, no la política
 final de privacidad descrita en [roadmap](../roadmap.md).
 
-Aún no hay creación de usuarios desde la aplicación ni conexión de Gmail individual.
-No se debe crear una cuenta EMPLOYEE para demostrar estas funciones como si ya
-estuvieran terminadas. La próxima etapa del roadmap es la gestión de usuarios.
+ADMIN puede crear, consultar y activar/desactivar usuarios y asignar roles desde la
+aplicación; consulta [gestión de usuarios](user-management.md). La conexión de Gmail
+individual y el acceso a correos propios siguen pendientes del roadmap.

@@ -15,6 +15,8 @@ import { Emails, EmailDetail } from './pages/Emails';
 import { ContextPage } from './pages/Context';
 import { Audit } from './pages/Audit';
 import { Reports } from './pages/Reports';
+import { Users } from './pages/Users';
+import { Account } from './pages/Account';
 import { Dashboard } from './pages/Dashboard';
 import { Alerts } from './pages/Alerts';
 import { AlertDetail } from './pages/AlertDetail';
@@ -118,6 +120,7 @@ function Protected() {
 function Shell() {
   const { user, logout } = useAuth();
   const [menu, setMenu] = useState(false);
+  const location = useLocation();
   const items =
     user?.role === 'EMPLOYEE'
       ? []
@@ -130,7 +133,11 @@ function Shell() {
         ];
   if (user?.role === 'ADMIN' || user?.role === 'ANALYST')
     items.push(['/reports', 'Reportes']);
-  if (user?.role === 'ADMIN') items.push(['/audit', 'Auditoría']);
+  if (user?.role === 'ADMIN') {
+    items.push(['/audit', 'Auditoría']);
+    items.push(['/users', 'Usuarios']);
+  }
+  items.push(['/account', 'Mi cuenta']);
   return (
     <div className="app">
       <a className="skip" href="#content">
@@ -183,7 +190,7 @@ function Shell() {
           </div>
         </header>
         <main id="content" tabIndex={-1}>
-          {user?.role === 'EMPLOYEE' ? (
+          {user?.role === 'EMPLOYEE' && location.pathname !== '/account' ? (
             <section>
               <h1>Bienvenido a BEC Guard</h1>
               <p>Tu buzón personal estará disponible en una próxima etapa.</p>
@@ -217,6 +224,8 @@ export function AppRoutes() {
           />
           <Route path="audit" element={<Audit />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="users" element={<Users />} />
+          <Route path="account" element={<Account />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
