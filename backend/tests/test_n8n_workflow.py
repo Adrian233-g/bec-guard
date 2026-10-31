@@ -93,3 +93,33 @@ def test_both_inputs_use_common_pipeline_and_only_webhook_receives_response():
     )
     assert connections["Respond to webhook?"]["main"][0][0]["node"] == "Respond"
     assert connections["Respond to webhook?"]["main"][1] == []
+
+
+def test_generated_receivers_reuse_pipeline_with_isolated_credentials():
+    import subprocess
+
+    generator = WORKFLOW.parents[1] / "mailbox-workflow.mjs"
+    script = """
+      const {mailboxWorkflow} = await import(process.argv[1]);
+      console.log(JSON.stringify(mailboxWorkflow({mailboxId: process.argv[2],
+        imapCredentialId:'imap-1', automationCredentialId:'auth-1',
+        backendUrl:'http://backend:8000'})));
+    """
+    identity = "11111111-2222-4333-8444-555555555555"
+    result = subprocess.run(
+        ["node", "--input-type=module", "-e", script, generator.as_uri(), identity],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    workflow = json.loads(result.stdout)
+    nodes = {node["name"]: node for node in workflow["nodes"]}
+    assert workflow["active"] is False
+    assert "Webhook" not in nodes
+    assert nodes["Email Trigger (IMAP)"]["id"] == "bgm-imap-" + identity.replace("-", "")
+    assert nodes["Email Trigger (IMAP)"]["credentials"]["imap"]["id"] == "imap-1"
+    assert nodes["Ingest email"]["credentials"]["httpHeaderAuth"]["id"] == "auth-1"
+    assert nodes["Analyze email"]["credentials"]["httpHeaderAuth"]["id"] == "auth-1"
+    assert workflow["connections"]["Email Trigger (IMAP)"]["main"][0][0]["node"] == "Normalize IMAP"
+    for connection in workflow["connections"].values():
+        assert all(edge["node"] in nodes for output in connection["main"] for edge in output)

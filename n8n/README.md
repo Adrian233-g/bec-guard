@@ -152,3 +152,14 @@ Resolved de n8n descarga los adjuntos temporalmente como datos binarios para
 interpretar el correo; la normalización no los envía al backend ni los analiza.
 Las ejecuciones terminadas conservan sus datos sin borrado automático. Cada correo enviado al análisis comparte su texto con el
 proveedor de IA elegido. No se envían avisos por correo automáticamente.
+
+## Base para receptores por empleado
+
+`mailbox-workflow.mjs` genera un receptor aislado a partir del workflow canónico:
+usa credenciales IMAP y de automatización distintas, sin copiar secretos en el JSON.
+La API puede autenticar una clave derivada para un buzón concreto; esa clave no
+permite analizar correos de otro buzón. El ajuste de UIDNEXT también reconoce los
+receptores generados. El generador y las claves aún no se aprovisionan ni activan
+automáticamente desde la aplicación: **todavía no hay conexión multiusuario
+operativa**. No publicar instancias generadas hasta implementar y probar su ciclo
+de vida completo y el manejo seguro de credenciales.

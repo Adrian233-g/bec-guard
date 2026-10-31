@@ -20,16 +20,18 @@ from app.services.semantic_analysis import LLMErrorCode, SemanticAnalyzer
 router = APIRouter(
     prefix="/api/automation/emails",
     tags=["n8n automation"],
-    dependencies=[Depends(require_automation_key)],
 )
 Settings = Annotated[AutomationSettings, Depends(get_automation_settings)]
+ConnectorMailbox = Annotated[UUID | None, Depends(require_automation_key)]
 
 
-def _trusted_mailbox(session: Database, settings: AutomationSettings) -> Mailbox:
-    # This key is scoped server-side to ONE explicitly configured mailbox. The
+def _trusted_mailbox(
+    session: Database, settings: AutomationSettings, connector_mailbox: UUID | None
+) -> Mailbox:
+    # The key is scoped server-side to ONE mailbox. The
     # email headers, payload and query parameters never choose its owner.
     try:
-        mailbox_id = UUID(settings.automation_mailbox_id.strip())
+        mailbox_id = connector_mailbox or UUID(settings.automation_mailbox_id.strip())
     except ValueError, AttributeError:
         raise HTTPException(503, "Automation mailbox not configured") from None
     mailbox = session.get(Mailbox, mailbox_id)
@@ -50,11 +52,12 @@ def ingest(
     request: Request,
     response: Response,
     settings: Settings,
+    connector_mailbox: ConnectorMailbox,
     mailbox_id: Annotated[UUID | None, Query()] = None,
 ):
     if mailbox_id is not None or body.mailbox_id is not None:
         raise HTTPException(400, "Mailbox is determined by the connector configuration")
-    mailbox = _trusted_mailbox(session, settings)
+    mailbox = _trusted_mailbox(session, settings, connector_mailbox)
     email, created = ingest_email_idempotently(
         session,
         body,
@@ -79,9 +82,10 @@ def analyze(
     request: Request,
     response: Response,
     settings: Settings,
+    connector_mailbox: ConnectorMailbox,
     analyzer_factory: Annotated[Callable[[], SemanticAnalyzer], Depends(get_analyzer_factory)],
 ):
-    mailbox = _trusted_mailbox(session, settings)
+    mailbox = _trusted_mailbox(session, settings, connector_mailbox)
     email = session.get(Email, email_id)
     if email is None or email.mailbox_id != mailbox.id:
         raise HTTPException(404, "Email not found")

@@ -1,5 +1,5 @@
 // n8n 2.44.4: start this workflow at Gmail's current UIDNEXT on activation.
-// The patch is deliberately scoped to BEC Guard and fails the image build if the
+// Scoped to the legacy BEC Guard trigger and generated mailbox triggers; it fails if the
 // upstream implementation changes. No credentials or message content are read.
 const fs = require('node:fs');
 const path = process.argv[2];
@@ -17,7 +17,8 @@ replaceOnce(
   '        connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));',
   `        // Snapshot the mailbox after SELECT and before processing queued arrivals.
         // uidNext is supplied by the IMAP server, not by an untrusted message header.
-        if (this.getWorkflow().id === 'bec-guard-analysis-webhook' && node.id === 'imap-trigger') {
+        if ((this.getWorkflow().id === 'bec-guard-analysis-webhook' && node.id === 'imap-trigger') ||
+            /^bgm-imap-[a-f0-9]{32}$/.test(node.id)) {
             const uidNext = connection.client?.mailbox?.uidNext;
             if (!Number.isSafeInteger(uidNext) || uidNext < 1) {
                 await connection.end();

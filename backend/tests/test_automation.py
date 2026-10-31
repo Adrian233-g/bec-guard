@@ -455,3 +455,55 @@ def test_connector_requires_server_mailbox_configuration(api_app, api_client, em
     )
     assert response.status_code == 503
     assert response.json()["detail"] == "Automation mailbox not configured"
+
+
+def test_each_connector_is_scoped_to_its_own_mailbox(
+    api_client, automation_setup, db_session, account, analysis_stub
+):
+    from app.core.connector_tokens import connector_token
+    from app.models import Role, User
+
+    headers, payload = automation_setup
+    master = headers["X-BEC-Automation-Key"]
+    owner_mailbox = db_session.scalar(select(Mailbox).where(Mailbox.user_id == account.id))
+    other = User(
+        name="Other", email="other-connector@example.com", password_hash="test", role=Role.EMPLOYEE
+    )
+    db_session.add(other)
+    db_session.flush()
+    other_mailbox = Mailbox(
+        user_id=other.id,
+        email_address="other-connector@gmail.com",
+        provider="gmail",
+        status="ACTIVE",
+    )
+    db_session.add(other_mailbox)
+    db_session.commit()
+    owner_key = {"X-BEC-Automation-Key": connector_token(master, owner_mailbox.id)}
+    other_key = {"X-BEC-Automation-Key": connector_token(master, other_mailbox.id)}
+    first = api_client.post("/api/automation/emails", json=payload, headers=owner_key)
+    second = api_client.post("/api/automation/emails", json=payload, headers=other_key)
+    assert first.status_code == second.status_code == 201
+    assert first.json()["email"]["mailbox_id"] == str(owner_mailbox.id)
+    assert second.json()["email"]["mailbox_id"] == str(other_mailbox.id)
+    assert (
+        api_client.post(
+            f"/api/automation/emails/{first.json()['email']['id']}/analyze", headers=other_key
+        ).status_code
+        == 404
+    )
+    assert analysis_stub.calls == 0
+    forged = {
+        "X-BEC-Automation-Key": connector_token(master, owner_mailbox.id).replace(
+            owner_mailbox.id.hex, other_mailbox.id.hex
+        )
+    }
+    assert (
+        api_client.post("/api/automation/emails", json=payload, headers=forged).status_code == 401
+    )
+    other_mailbox.status = "DISCONNECTED"
+    db_session.commit()
+    assert (
+        api_client.post("/api/automation/emails", json=payload, headers=other_key).status_code
+        == 503
+    )

@@ -10,8 +10,8 @@ El conector n8n existente utiliza una sola clave de automatización y queda limi
 a **un buzón** definido en el backend mediante `AUTOMATION_MAILBOX_ID`. No elige el
 dueño a partir de los campos To/Cc ni acepta que el workflow lo especifique. Si la
 variable falta, el buzón no está activo o su dueño está desactivado, la API rechaza
-la ingestión y el análisis. Se necesita otro mecanismo de identidad por conexión
-para admitir varios receptores en la etapa 3.
+la ingestión y el análisis. La API también admite credenciales derivadas limitadas a un buzón concreto,
+pero aún falta aprovisionarlas y administrar sus receptores desde la aplicación.
 
 ## Instalaciones anteriores a 0010 con correos existentes
 

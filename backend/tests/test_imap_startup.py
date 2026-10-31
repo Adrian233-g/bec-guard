@@ -62,3 +62,13 @@ def test_missing_uid_fails_closed_and_other_workflows_are_untouched(patched_modu
     assert run.returncode != 0 and "UIDNEXT unavailable" in run.stdout
     run = run_start(patched_module, "other-workflow", "imap-trigger", 42, 5)
     assert json.loads(run.stdout)["last"] == 5
+
+
+def test_each_mailbox_receiver_has_its_own_starting_point(patched_module):
+    node1 = "bgm-imap-" + "a" * 32
+    node2 = "bgm-imap-" + "b" * 32
+    first = run_start(patched_module, "generated-1", node1, 50, 5)
+    second = run_start(patched_module, "generated-2", node2, 90, 5)
+    assert json.loads(first.stdout)["last"] == 49
+    assert json.loads(second.stdout)["last"] == 89
+    assert run_start(patched_module, "generated-1", node1, None, 5).returncode != 0

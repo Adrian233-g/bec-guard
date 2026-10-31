@@ -155,12 +155,15 @@ La migración y el conector existente requieren configuración explícita: ver
       verificar conexión, mostrar estado y permitir desconectar o actualizarla.
 - [ ] Definir almacenamiento cifrado y gestión de claves/secretos; evitar exponer
       credenciales en navegador, logs, API, bitácora, exports o historial n8n.
-- [ ] Diseñar cómo crear, activar y detener receptores IMAP por buzón sin que los
-      empleados administren n8n, reutilizando el análisis existente y manteniendo
-      identificadores y permisos de cada conexión separados.
+- [ ] Crear, activar y detener receptores IMAP por buzón sin que los empleados
+      administren n8n. Avance: existe un generador de workflows a partir del flujo
+      canónico y credenciales de automatización limitadas a cada buzón; falta
+      aprovisionar las credenciales y workflows desde la aplicación y gestionar
+      su ciclo de vida. Aún no hay conexión individual operativa.
 - [ ] Garantizar el punto de partida independiente por buzón y la regla de omitir
       correos recibidos mientras el workflow estaba apagado. Adaptar el ajuste actual
-      de n8n, que está vinculado al workflow y nodo existentes, al diseño elegido.
+      de n8n a los receptores generados. El ajuste tiene pruebas simuladas por
+      buzón; falta probar los receptores reales y sus reinicios de extremo a extremo.
 - [ ] Gestionar credenciales inválidas o revocadas y errores de conexión sin marcar
       correos como seguros. Evitar reintentos que consuman cuota sin necesidad.
 - [ ] Revisar el historial de ejecuciones de n8n y permisos al editor: conservar

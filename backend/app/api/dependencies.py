@@ -1,5 +1,6 @@
 import secrets
 from typing import Annotated
+from uuid import UUID
 
 import jwt
 from fastapi import Depends, HTTPException, Request
@@ -8,6 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import AuthSettings, AutomationSettings
+from app.core.connector_tokens import verify_connector_token
 from app.core.database import get_session
 from app.core.tokens import decode_access_token
 from app.models import Role, User
@@ -27,12 +29,16 @@ def get_automation_settings() -> AutomationSettings:
 def require_automation_key(
     key: Annotated[str | None, Depends(automation_header)],
     settings: Annotated[AutomationSettings, Depends(get_automation_settings)],
-) -> None:
+) -> UUID | None:
     expected = settings.automation_api_key.get_secret_value()
     if len(expected) < 32:
         raise HTTPException(503, "Automation unavailable")
-    if not secrets.compare_digest((key or "").encode("utf-8"), expected.encode("utf-8")):
+    if secrets.compare_digest((key or "").encode("utf-8"), expected.encode("utf-8")):
+        return None  # Legacy key remains bound to AUTOMATION_MAILBOX_ID.
+    mailbox_id = verify_connector_token(expected, key or "")
+    if mailbox_id is None:
         raise HTTPException(401, "Invalid automation credentials")
+    return mailbox_id
 
 
 def get_auth_settings(request: Request) -> AuthSettings:
