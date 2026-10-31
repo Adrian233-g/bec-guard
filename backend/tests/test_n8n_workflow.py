@@ -58,7 +58,7 @@ def test_routing_is_fail_closed_and_response_excludes_email_content():
         assert workflow["connections"][name]["main"][0][0]["node"] == "Respond to webhook?"
 
 
-def test_workflow_has_no_secrets_or_saved_execution_data():
+def test_workflow_has_no_secrets_and_preserves_execution_history():
     raw = WORKFLOW.read_text()
     workflow = json.loads(raw)
     assert "$env" not in raw  # Installed v2 blocks it; do not weaken global controls.
@@ -70,9 +70,9 @@ def test_workflow_has_no_secrets_or_saved_execution_data():
             assert set(credential) == {"id", "name"}
     assert workflow["settings"] == {
         "executionOrder": "v1",
-        "saveDataErrorExecution": "none",
-        "saveDataSuccessExecution": "none",
-        "saveManualExecutions": False,
+        "saveDataErrorExecution": "all",
+        "saveDataSuccessExecution": "all",
+        "saveManualExecutions": True,
         "saveExecutionProgress": False,
     }
 

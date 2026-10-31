@@ -609,9 +609,9 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "saveDataErrorExecution": "none",
-    "saveDataSuccessExecution": "none",
-    "saveManualExecutions": false,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
     "saveExecutionProgress": false
   },
   "pinData": {}

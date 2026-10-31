@@ -82,38 +82,21 @@ Repetir el Message-ID exacto recupera el Email sin sobrescribirlo ni otra audito
 EMAIL_INGESTED. COMPLETED se reutiliza; ERROR permite retry explícito sobre el mismo
 análisis. La creación de BECAlert y su política >=70 pertenecen a FastAPI.
 
-## Privacidad de ejecuciones
+## Historial de ejecuciones
 
-Se verificaron los nombres contra `@n8n/config/dist/configs/executions.config.js`
-de 2.44.4. Compose configura:
+n8n guarda las ejecuciones exitosas, fallidas y manuales para que se puedan revisar
+los pasos del workflow. El historial puede incluir remitentes, asunto y contenido del
+correo, además de respuestas del backend. Solo debe acceder a n8n quien esté
+autorizado para verlos. Los datos de cada paso no se guardan progresivamente durante la ejecución.
 
-```text
-EXECUTIONS_DATA_SAVE_ON_ERROR=none
-EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
-EXECUTIONS_DATA_SAVE_ON_PROGRESS=false
-EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=false
-EXECUTIONS_DATA_PRUNE=true
-EXECUTIONS_DATA_MAX_AGE=24
-EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL=1
-EXECUTIONS_DATA_HARD_DELETE_BUFFER=0
-```
+Compose desactiva la limpieza automática del historial; las ejecuciones permanecen
+hasta que se eliminen manualmente o se borre el almacenamiento. El historial anterior a este
+cambio, que se descartó con la configuración previa, no se puede recuperar. La
+base de datos de BEC Guard sigue conservando correos, análisis y bitácora según sus
+propias políticas. En el editor evita fijar datos sensibles con pinning o exportar
+ejecuciones que los contengan.
 
-El workflow también desactiva guardado de éxitos/errores, ejecuciones manuales y
-progreso. n8n guarda un registro inicial temporal incluso con save=none y marca su
-eliminación al terminar; en SQL puede seguir indicando running aunque deletedAt
-ya esté definido. El hard-delete periódico se ejecuta cada minuto, sin buffer
-adicional, para borrar ese registro y su payload. No se conserva como historial
-visible ni pinData. Una ejecución activa sí puede conservar datos temporales.
-No se guarda raw MIME. El pruning limita metadata restante a 24 horas de forma
-periódica, no inmediata. No se hace una eliminación masiva de datos históricos.
-
-Para depurar: respuesta HTTP sanitizada y su error_code, estado/readiness de n8n,
-IDs persistidos en FastAPI y logs operativos sin payload. El editor puede mostrar
-datos durante una ejecución manual activa; evitar pinning y exports con datos.
-Desactivar el guardado reduce la capacidad de reproducir ejecuciones desde n8n:
-el retry se hace enviando nuevamente el correo normalizado.
-
-Referencias: [ejecuciones](https://docs.n8n.io/hosting/configuration/environment-variables/executions/),
+Referencias: [configuración de ejecuciones](https://docs.n8n.io/hosting/configuration/environment-variables/executions/),
 [CLI import/publish](https://docs.n8n.io/hosting/cli-commands/).
 
 ## Alcance
@@ -160,6 +143,5 @@ La fecha usada es la cabecera Date del mensaje; si falta o es inválida, se usa 
 hora de procesamiento, no necesariamente la fecha real de recepción. El formato
 Resolved de n8n descarga los adjuntos temporalmente como datos binarios para
 interpretar el correo; la normalización no los envía al backend ni los analiza.
-Las ejecuciones terminadas no conservan su contenido según la política de privacidad
-configurada arriba. Cada correo enviado al análisis comparte su texto con el
+Las ejecuciones terminadas conservan sus datos sin borrado automático. Cada correo enviado al análisis comparte su texto con el
 proveedor de IA elegido. No se envían avisos por correo automáticamente.

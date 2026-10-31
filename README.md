@@ -291,9 +291,8 @@ EmailIngestRequest y header X-BEC-Automation-Key. Devuelve ALERT, NO_ALERT o ERR
 
 n8n usa exclusivamente POST /api/automation/emails (Message-ID idempotente) y
 POST /api/automation/emails/{id}/analyze (analysis + alert_id). Esa key no accede
-a los endpoints humanos. El POST humano conserva 409 en duplicados. Se desactiva
-el guardado de ejecuciones n8n y se borran sus registros temporales mediante
-pruning; ver detalles y límites en la guía. La entrada IMAP requiere una credencial y activación manual; no hay notificaciones.
+a los endpoints humanos. El POST humano conserva 409 en duplicados. n8n conserva el historial de ejecuciones sin borrado automático para facilitar la
+demostración y el diagnóstico; ver detalles y límites en la guía. La entrada IMAP requiere una credencial y activación manual; no hay notificaciones.
 
 Regresión de desarrollo desde backend/, sin proveedor ni BD:
 
