@@ -90,8 +90,9 @@ combinan sin conceder acceso a otros correos normales.
   históricos. Hay dos usuarios activos y todavía no hay buzones registrados.
 - El workflow IMAP anterior se despublicó para evitar receptores duplicados.
   Los servicios actualizados están sanos; se comprobó el acceso de lectura desde
-  el backend a la API de n8n con la llave configurada. Falta conectar el Gmail
-  desde la sesión del empleado y probar el flujo real.
+  el backend a la API de n8n con la llave configurada. El empleado ya conectó
+  su Gmail: buzón y receptor aparecen activos, sin reconciliación pendiente.
+  Aún no hay correos ni análisis nuevos; falta probar el recorrido completo real.
 
 ## Estado real al comenzar
 
