@@ -194,6 +194,21 @@ BEC_ALERT_CLAIMED/RELEASED/CONFIRMED/FALSE_POSITIVE comparten transacción.
 AuditLog no guarda la resolución ni evidencia del email; fallo de persistencia/audit
 revierte el intento y responde 503 genérico. No hay reopen ni cambios de veredicto.
 
+## GET /api/notifications
+
+Todos los roles autenticados leen únicamente sus propios avisos in-app. Lista:
+array ordenado created_at DESC/id ASC con id, alert_id, kind, read_at nullable,
+created_at, alert_status, risk_level, risk_score, subject, sender_name y
+sender_email. No incluye cuerpo del correo. `limit` default 20 (1–50), `offset`
+default 0 y `unread_only` opcional; parámetros inválidos 400. Sin token o usuario
+inactivo 401.
+
+`GET /api/notifications/unread-count` devuelve `{"count": n}`.
+`POST /api/notifications/read-all` devuelve `{"updated": n}` y es idempotente.
+`POST /api/notifications/{notification_id}/read` responde 204; UUID inválido 400 y
+aviso inexistente o de otro usuario 404, sin revelar su existencia. Un aviso se
+crea una sola vez por alerta y destinatario; no hay DELETE.
+
 ## GET /api/dashboard/summary
 
 Todos los roles autenticados. Agregados SQL reales, sin cache: emails_total,

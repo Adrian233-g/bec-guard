@@ -105,6 +105,19 @@ export interface AlertDetail {
   updated_at: string;
   analysis: Analysis;
 }
+export interface Notification {
+  id: string;
+  alert_id: string;
+  kind: 'BEC_ALERT';
+  read_at: string | null;
+  created_at: string;
+  alert_status: AlertStatus;
+  risk_level: Risk;
+  risk_score: number;
+  subject: string;
+  sender_name: string | null;
+  sender_email: string;
+}
 export interface Dashboard {
   emails_total: number;
   analyses_completed: number;

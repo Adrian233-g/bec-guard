@@ -9,6 +9,7 @@ from app.models import BECAlert, EmailAnalysis, User
 from app.models.enums import AnalysisStatus, Role
 from app.schemas.alerts import AlertResolveRequest
 from app.services.audit import AuditAction, record_alert_created, record_alert_review
+from app.services.notifications import create_alert_notifications
 
 ALERT_POLICY_VERSION = "alert-v1"
 ALERT_THRESHOLD = 70
@@ -35,6 +36,7 @@ def ensure_alert_for_analysis(
         session.add(alert)
         session.flush()
         record_alert_created(session, actor=actor, alert_id=alert.id, peer=peer)
+        create_alert_notifications(session, alert, analysis)
     return alert
 
 

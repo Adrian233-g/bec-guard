@@ -22,6 +22,7 @@ import { Alerts } from './pages/Alerts';
 import { AlertDetail } from './pages/AlertDetail';
 import { AuthProvider, useAuth } from './auth';
 import { ErrorState, LoadingState, label } from './components';
+import { NotificationBell } from './NotificationBell';
 
 function Login() {
   const { user, login } = useAuth();
@@ -182,6 +183,7 @@ function Shell() {
         <header className="topbar">
           <span>Centro de revisión</span>
           <div>
+            <NotificationBell />
             <span className="identity">
               {user?.name}
               <small>{label(user?.role)}</small>

@@ -194,6 +194,103 @@ small {
   align-items: center;
   gap: 22px;
 }
+.notifications {
+  position: relative;
+}
+.notification-button {
+  position: relative;
+}
+.notification-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  margin-left: 8px;
+  border-radius: 10px;
+  background: var(--danger);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.notification-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(380px, calc(100vw - 40px));
+  padding: 14px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 18px 45px rgba(20, 40, 55, 0.18);
+  z-index: 40;
+  text-align: left;
+}
+.notification-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.notification-panel h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.notification-panel header button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+.notification-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow: auto;
+}
+.notification {
+  border-top: 1px solid var(--border);
+}
+.notification:first-child {
+  border-top: 0;
+}
+.notification a {
+  display: block;
+  padding: 10px 6px;
+  color: inherit;
+  text-decoration: none;
+}
+.notification a:hover {
+  background: #f4f8fa;
+}
+.notification strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.88rem;
+}
+.notification small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.notification:not(.read) strong::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+  vertical-align: middle;
+}
+.notification-panel .state {
+  padding: 18px 6px;
+  background: transparent;
+  border: 0;
+}
 .identity {
   color: #233747;
   text-align: right;
@@ -439,6 +536,13 @@ dialog::backdrop {
   .topbar > div {
     justify-content: space-between;
     width: 100%;
+  }
+  .notification-panel {
+    position: fixed;
+    top: 76px;
+    left: 12px;
+    right: 12px;
+    width: auto;
   }
   .identity {
     text-align: left;

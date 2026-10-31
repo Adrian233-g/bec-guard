@@ -41,7 +41,11 @@ localStorage, cookies de sesión ficticias ni secretos en DOM/logs del cliente.
 | /reports | Descarga de reportes operativos PDF/XLSX para ADMIN, MANAGER y AUDITOR. |
 
 La sidebar se convierte en menú desplegable en móvil. Nombre/rol y logout quedan
-visibles en el header. No hay ruta de usuarios. Reportes usa un fetch autenticado
+visibles en el header. El header incluye una campana de avisos in-app con contador
+de no leídos; al abrirla muestra los últimos 10 avisos, permite marcar uno o todos
+como leídos y enlaza al caso. El contador se actualiza al iniciar, al recuperar foco
+y cada minuto; la autorización del caso sigue en el backend. No hay ruta de usuarios.
+Reportes usa un fetch autenticado
 que envía Bearer desde sessionStorage, obtiene el blob y revoca su object URL;
 401 limpia la sesión y 403 conserva la sesión con feedback.
 

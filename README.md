@@ -247,7 +247,7 @@ Si ya existen correos, consulta primero [propiedad y migración de buzones](docs
 
 Para crear una revisión: `uv run alembic revision --autogenerate -m "describe change"`.
 Revisa el archivo generado antes de aplicarlo. Para revertir la última revisión:
-`uv run alembic downgrade -1`. Revertir 0008 relaja constraints HITL; 0007 elimina alertas; 0006 elimina análisis; 0005 elimina emails;
+`uv run alembic downgrade -1`. Revertir 0013 elimina los avisos in-app; 0008 relaja constraints HITL; 0007 elimina alertas; 0006 elimina análisis; 0005 elimina emails;
 revertir 0004 elimina ejecutivos/proveedores;
 revertir 0003 elimina la auditoría; llegar a base elimina también users. El ciclo
 destructivo se valida solo en la base de test.
@@ -292,6 +292,7 @@ se persisten como ERROR con riesgo null y HTTP 502 (503 sin configuración), nun
 LOW. Un COMPLETED >=70 crea una BECAlert OPEN con verdict null, sin ejecutar la
 recomendación. GET /api/alerts y GET /api/alerts/{id} permiten lectura a todos los
 roles autenticados. Claim/release/resolve implementan HITL, sin PATCH/DELETE.
+La campana de avisos in-app notifica al dueño y al equipo activo; no envía correos.
 
 ## Orquestar con n8n
 
@@ -307,7 +308,7 @@ POST /api/automation/emails/{id}/analyze (analysis + alert_id). Esa key no acced
 a los endpoints humanos. El POST humano conserva 409 en duplicados. n8n conserva el historial de ejecuciones sin borrado automático para facilitar la
 demostración y el diagnóstico; ver detalles y límites en la guía. El trigger IMAP
 anterior se administra manualmente; los receptores individuales se crean desde la
-aplicación. No hay notificaciones.
+aplicación. Los avisos al empleado y al equipo son solo in-app.
 
 Regresión de desarrollo desde backend/, sin proveedor ni BD:
 
@@ -421,13 +422,14 @@ referencias bancarias. ANALYST no tiene acceso. Ver [alcance y privacidad](docs/
 ## Pendiente tras Fase 8
 
 Fase 6 añade BECAlert automática, lectura de alertas, API key acotada y workflow
-Webhook n8n. Fase 7 añade frontend funcional e HITL. Quedan pendientes recuperación de contraseñas, refresh tokens y notificaciones.
+Webhook n8n. Fase 7 añade frontend funcional, HITL y avisos in-app. Quedan
+pendientes recuperación de contraseñas y refresh tokens.
 Gmail puede conectarse por IMAP con contraseña de aplicación; los correos
 recibidos mientras el workflow está apagado se omiten al iniciarlo; Microsoft Graph
 no está integrado.
 
 Las APIs de contexto ofrecen GET/POST/PATCH; ADMIN escribe. Emails ofrecen
-POST/GET para ADMIN y ANALYST; EMPLOYEE aún no accede; no hay DELETE.
+POST/GET; cada usuario accede solo a los correos de sus buzones; no hay DELETE.
 EmailAnalysis, BECAlert, workflow n8n y frontend están implementados. La revisión
 humana permite claim, release y cierre con veredicto y resolución auditables.
 

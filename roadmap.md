@@ -60,6 +60,10 @@ correo ni instalación de una aplicación por empleado.
   aparecer en logs, respuestas, bitácora o ejecuciones de n8n. Los correos en el
   historial de n8n son sensibles: revisar su acceso y tratamiento para no saltarse
   la privacidad entre empleados.
+- Los avisos al empleado y al equipo de seguridad son **solo in-app**: una campana
+  dentro de BEC Guard con contador de no leídos y enlace al caso. No se envían
+  correos externos ni se integra otro canal. Cada aviso se crea una sola vez por
+  alerta y destinatario; no hay asignación automática del caso.
 
 ## Matriz de permisos objetivo
 
@@ -86,13 +90,15 @@ combinan sin conceder acceso a otros correos normales.
   correos existentes y sus 5 análisis; no había alertas. Se conservaron los
   dos usuarios, ejecutivos, proveedores y la bitácora, así como el historial de
   ejecuciones de n8n.
-- La base local se migró hasta `0012_mailbox_connection_progress` sin correos
-  históricos. Hay dos usuarios activos y todavía no hay buzones registrados.
+- La base local se migró hasta `0013_notifications` sin correos históricos.
+  Hay dos usuarios activos y la tabla de avisos in-app creada.
 - El workflow IMAP anterior se despublicó para evitar receptores duplicados.
   Los servicios actualizados están sanos; se comprobó el acceso de lectura desde
   el backend a la API de n8n con la llave configurada. El empleado ya conectó
   su Gmail: buzón y receptor aparecen activos, sin reconciliación pendiente.
   Aún no hay correos ni análisis nuevos; falta probar el recorrido completo real.
+- Los avisos in-app están implementados y probados con servicios simulados; backend
+  y frontend locales reconstruidos, con la campana disponible en la aplicación.
 
 ## Estado real al comenzar
 
@@ -117,9 +123,11 @@ combinan sin conceder acceso a otros correos normales.
 - [x] Permisos por dueño de buzón y aislamiento multiusuario implementados;
       las revisiones 0010 y 0011 ya se aplicaron a la base local.
 - [x] Asociación explícita usuario → buzón → correo con unicidad (mailbox_id, message_id).
-- [ ] Conexión individual de Gmail desde la aplicación y múltiples receptores.
-- [ ] Notificaciones automáticas a empleados/seguridad: la cola en la app no es
-      equivalente al envío de un aviso.
+- [x] Conexión individual de Gmail desde la aplicación y múltiples receptores
+      implementada en código; falta validar el ciclo completo con n8n y Gmail reales.
+- [x] Notificaciones in-app a empleados y equipo de seguridad: campana con avisos
+      al dueño del buzón y a ADMIN/ANALYST activos, sin envío de correo externo.
+      Revisión 0013 aplicada a la base local.
 - [ ] Validación formal de la calidad del detector híbrido con datos suficientes.
 
 ## Etapas y tareas
@@ -209,8 +217,11 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
       permisos y bitácora; corregir los problemas concretos que aparezcan.
       La repetición de una resolución cerrada también exige ser el analista
       asignado o ADMIN; validado con pruebas simuladas y PostgreSQL aislado.
-- [ ] **4.4. Avisos:** definir canal y destinatarios, e implementar avisos al
-      empleado y al equipo de seguridad con prevención de duplicados.
+- [x] **4.4. Avisos in-app:** campana con contador de no leídos para el empleado
+      dueño y el equipo de seguridad (ADMIN/ANALYST activos), enlace al caso y
+      acciones de marcar uno o todos como leídos. Sin canal externo ni duplicados
+      por alerta/destinatario. Guardado en `notifications` (revisión 0013) y
+      probado con API y frontend simulados. Sin backfill para alertas anteriores.
 - [ ] **4.5. Riesgo medio y errores:** evaluar la presentación de MEDIUM y del
       umbral >=70 sin cambiar la política sin evidencia; distinguir 429 y
       habilitar reintentos explícitos cuando corresponda.
@@ -241,7 +252,6 @@ La prueba real con Gmail y Groq continúa en la etapa 5.
   La contraseña inicial la establece ADMIN y el usuario puede cambiarla con la actual.
 - Cifrado y custodia de credenciales IMAP, y mecanismo concreto de receptores por
   usuario sin darles acceso al editor de n8n.
-- Canal de avisos a empleados y seguridad y reglas para evitar duplicados.
 - Tratamiento de correos sin análisis, análisis fallidos y riesgo medio en la UI.
 - Cómo presentar y migrar el buzón y los mensajes actuales al empleado propietario.
 - Política exacta de acceso de n8n a datos sensibles y del historial de ejecuciones.

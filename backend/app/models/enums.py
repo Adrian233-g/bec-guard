@@ -57,3 +57,7 @@ class MailboxProvider(StrEnum):
     GMAIL = "gmail"
     IMAP = "imap"
     OTHER = "other"
+
+
+class NotificationKind(StrEnum):
+    BEC_ALERT = "BEC_ALERT"

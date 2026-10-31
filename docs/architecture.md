@@ -146,13 +146,14 @@ flowchart TD
     Context --> Result
     Semantic --> Result
     Result --> Risk[Evaluación de riesgo y decisión de alerta]
-    Risk --> DB[(PostgreSQL: análisis, alertas y auditoría)]
+    Risk --> DB[(PostgreSQL: análisis, alertas, avisos y auditoría)]
     DB --> Review[Revisión humana mediante React y FastAPI]
 ```
 
 FastAPI combina señales y valida el resultado; un proveedor LLM no decide por sí
 solo acciones financieras ni sustituye la revisión humana. El scoring hybrid-v1,
-alert-v1 y HITL existen. Recepción real de correo y notificaciones siguen pendientes.
+alert-v1 y HITL existen. La recepción con Gmail real está implementada y pendiente
+de validación integral; los avisos al equipo son in-app, sin canal externo.
 Cambiar de proveedor no modifica consumidores REST ni entidades de negocio. No hay
 agentes ni evaluación de holdout en el producto.
 
@@ -170,6 +171,7 @@ backend. No hay state manager, framework UI ni datos estáticos de producción.
 GET /api/dashboard/summary agrega SQL, GET /api/audit limita ADMIN/AUDITOR. Filtros de
 alertas siguen siendo columnas SQL. Claim/release/resolve bloquean la fila de alerta
 y confirman mutación más AuditLog en un commit. 0008 refuerza invariantes por estado;
-no se cambian migraciones históricas, motor BEC, n8n ni políticas de scoring.
+0013 añade avisos in-app creados con la alerta y consultados solo por su destinatario.
+No se cambian migraciones históricas, motor BEC, n8n ni políticas de scoring.
 La ruta `/reports` entrega PDF/XLSX a ADMIN/MANAGER/AUDITOR con descarga autenticada.
 Ver [frontend](frontend.md), [dominio](domain.md) y [reportes](reporting.md).

@@ -13,6 +13,7 @@ from app.api.email_analysis import router as analysis_router
 from app.api.emails import router as emails_router
 from app.api.health import router as health_router
 from app.api.mailboxes import router as mailboxes_router
+from app.api.notifications import router as notifications_router
 from app.api.organizational_context import router as context_router
 from app.api.product import router as product_router
 from app.api.reports import router as reports_router
@@ -56,6 +57,7 @@ def create_app(
     application.include_router(emails_router)
     application.include_router(analysis_router)
     application.include_router(alerts_router)
+    application.include_router(notifications_router)
     application.include_router(automation_router)
     return application
 

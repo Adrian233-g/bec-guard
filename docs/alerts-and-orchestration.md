@@ -5,7 +5,8 @@
 
 FastAPI conserva reglas, contexto, LangChain, scoring y política de alertas. n8n
 solo orquesta correo normalizado → ingestión → análisis → respuesta. No hay broker,
-workers nuevos, proveedor de correo ni notificaciones. Fase 7 añade frontend e HITL.
+workers nuevos, proveedor de correo ni notificaciones externas. Fase 7 añade
+frontend, HITL y avisos in-app.
 
 ## BECAlert y alert-v1
 
@@ -154,7 +155,8 @@ credencial/ejecución a través de mecanismos propios de n8n.
 Holdout y dataset intactos: sin evaluación, inspección manual ni tuning. La
 regresión development solo se ejecuta como smoke del motor existente. Límites:
 proceso síncrono, key única sin scopes dinámicos, red local, eliminación periódica
-(no instantánea) de datos temporales. No hay proveedor de correo real ni notificaciones. Frontend y revisión humana están en Fase 7.
+(no instantánea) de datos temporales. No hay proveedor de correo real ni canal de
+avisos externo; los avisos son in-app. Frontend y revisión humana están en Fase 7.
 
 
 ## HITL humano (Fase 7)
@@ -169,3 +171,23 @@ Idempotencia no repite eventos; CLOSED no puede cambiar de decisión ni reabrirs
 Los eventos humanos CLAIMED/RELEASED/CONFIRMED/FALSE_POSITIVE no incluyen resolución,
 score ni contenido; actor es User obligatorio y mutación/auditoría son atómicas.
 [Contratos](api-contracts.md) · [aplicación React](frontend.md).
+
+## Avisos in-app
+
+La revisión `0013_notifications` crea `public.notifications` con id, user_id FK
+RESTRICT, alert_id FK CASCADE, kind (`BEC_ALERT`), read_at nullable y created_at.
+La unicidad `(user_id, alert_id, kind)` evita duplicados y el índice
+`(user_id, created_at DESC, id)` sirve a la campana. No se guarda asunto, remitente
+ni cuerpo: la vista los obtiene del correo asociado y hereda los permisos de alerta.
+
+Al crear una alerta, la misma transacción que `BEC_ALERT_CREATED` inserta un aviso
+para el dueño del buzón y para cada ADMIN/ANALYST activo. Se excluyen cuentas
+inactivas y empleados ajenos. Reintentar `ensure_alert_for_analysis` no duplica
+avisos. Un fallo de inserción revierte la alerta completa. No se envían correos ni
+mensajes fuera de la aplicación y no se notifica la resolución del caso. No hay
+backfill: las alertas creadas antes de 0013 no generan avisos retroactivos.
+
+La campana del frontend consulta el contador al iniciar, al recuperar foco y cada
+minuto. Al abrirla muestra los últimos 10 avisos propios; cada enlace abre el caso
+y marca el aviso como leído, con una acción para marcar todos. El contador es solo
+indicativo: la autorización real sigue en los endpoints de alertas.

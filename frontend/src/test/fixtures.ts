@@ -1,4 +1,4 @@
-import type { AlertDetail, Dashboard, EmailDetail } from '../types';
+import type { AlertDetail, Dashboard, EmailDetail, Notification } from '../types';
 export const user = {
   id: 'user-1',
   name: 'Lucía',
@@ -78,6 +78,19 @@ export const summary = {
   risk_level: 'CRITICAL',
   risk_score: 90,
   bec_type: 'BANK_ACCOUNT_CHANGE',
+};
+export const notification: Notification = {
+  id: 'notification-1',
+  alert_id: alert.id,
+  kind: 'BEC_ALERT',
+  read_at: null,
+  created_at: '2026-10-21T12:02:00Z',
+  alert_status: 'OPEN',
+  risk_level: 'CRITICAL',
+  risk_score: 90,
+  subject: email.subject,
+  sender_name: email.sender_name,
+  sender_email: email.sender_email,
 };
 export const dashboard: Dashboard = {
   emails_total: 12,
