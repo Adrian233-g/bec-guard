@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api, ApiError, message } from '../api';
 import { useAuth } from '../auth';
 import {
+  Dialog,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -11,6 +12,7 @@ import {
   Pagination,
   label,
 } from '../components';
+import { IconPlus } from '../icons';
 import type { Role, User } from '../types';
 import { useResource } from '../useResource';
 
@@ -106,7 +108,14 @@ function UserManagement() {
             setError('');
           }}
         >
-          {creating ? 'Cancelar' : 'Añadir usuario'}
+          {creating ? (
+            'Cancelar'
+          ) : (
+            <>
+              <IconPlus aria-hidden="true" />
+              <span>Añadir usuario</span>
+            </>
+          )}
         </button>
       </PageHeader>
       {notice && (
@@ -114,59 +123,103 @@ function UserManagement() {
           {notice}
         </p>
       )}
-      {error && (
+      {error && !creating && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
       {creating && (
-        <section className="panel">
-          <h2>Crear usuario</h2>
+        <Dialog
+          title="Añadir usuario"
+          busy={busy}
+          onClose={() => {
+            setCreating(false);
+            setError('');
+          }}
+        >
           <form onSubmit={(e) => void create(e)}>
             <label htmlFor="user-name">Nombre</label>
-            <input id="user-name" name="name" required maxLength={200} />
-            <label htmlFor="user-email">Correo</label>
             <input
-              id="user-email"
-              name="email"
-              type="email"
+              id="user-name"
+              name="name"
               required
-              maxLength={320}
+              maxLength={200}
+              placeholder="Ej. Ana Morales"
+              autoFocus
             />
-            <label htmlFor="user-role">Rol</label>
-            <select id="user-role" name="role" defaultValue="EMPLOYEE">
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {label(r)}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="user-password">Contraseña inicial</label>
-            <input
-              id="user-password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-            />
-            <label htmlFor="user-confirm">Confirmar contraseña</label>
-            <input
-              id="user-confirm"
-              name="confirm"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-            />
-            <p className="muted">
+            <div className="form-grid-2">
+              <div>
+                <label htmlFor="user-email">Correo</label>
+                <input
+                  id="user-email"
+                  name="email"
+                  type="email"
+                  required
+                  maxLength={320}
+                  placeholder="ana@empresa.com"
+                />
+              </div>
+              <div>
+                <label htmlFor="user-role">Rol</label>
+                <select id="user-role" name="role" defaultValue="EMPLOYEE">
+                  {roles.map((r) => (
+                    <option key={r} value={r}>
+                      {label(r)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="form-grid-2">
+              <div>
+                <label htmlFor="user-password">Contraseña inicial</label>
+                <input
+                  id="user-password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                />
+              </div>
+              <div>
+                <label htmlFor="user-confirm">Confirmar contraseña</label>
+                <input
+                  id="user-confirm"
+                  name="confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                />
+              </div>
+            </div>
+            <p className="muted" style={{ margin: '8px 0 16px', fontSize: '0.8rem' }}>
               Mínimo 12 caracteres. El usuario puede cambiarla desde su cuenta.
             </p>
-            <button disabled={busy}>Crear usuario</button>
+            {error && (
+              <p role="alert" className="error" style={{ marginBottom: '14px' }}>
+                {error}
+              </p>
+            )}
+            <div className="actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setCreating(false);
+                  setError('');
+                }}
+              >
+                Cancelar
+              </button>
+              <button disabled={busy}>Crear usuario</button>
+            </div>
           </form>
-        </section>
+        </Dialog>
       )}
       {resource.loading ? (
         <LoadingState />
@@ -175,12 +228,18 @@ function UserManagement() {
       ) : !resource.data?.length ? (
         <EmptyState>No hay usuarios.</EmptyState>
       ) : (
-        <div
-          className="table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Tabla de usuarios"
-        >
+        <>
+          <div className="table-toolbar">
+            <span className="table-count-chip">
+              <strong>{resource.data.length}</strong> usuarios en el sistema
+            </span>
+          </div>
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Tabla de usuarios"
+          >
           <table>
             <thead>
               <tr>
@@ -194,10 +253,20 @@ function UserManagement() {
             <tbody>
               {resource.data.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.name}</td>
-                  <td>{row.email}</td>
+                  <td>
+                    <div className="user-cell">
+                      <span className="user-avatar-sm" aria-hidden="true">
+                        {row.name ? row.name[0].toUpperCase() : 'U'}
+                      </span>
+                      <span className="user-name-strong">{row.name}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="mono">{row.email}</span>
+                  </td>
                   <td>
                     <select
+                      className="table-select"
                       aria-label={`Rol de ${row.name}`}
                       value={row.role}
                       disabled={busy || row.id === user?.id}
@@ -222,7 +291,7 @@ function UserManagement() {
                   </td>
                   <td>
                     <button
-                      className="secondary"
+                      className="secondary table-btn-action"
                       aria-label={`${row.is_active ? 'Desactivar' : 'Activar'} ${row.name}`}
                       disabled={busy || row.id === user?.id}
                       onClick={() =>
@@ -237,6 +306,7 @@ function UserManagement() {
             </tbody>
           </table>
         </div>
+        </>
       )}
       <Pagination
         offset={offset}
