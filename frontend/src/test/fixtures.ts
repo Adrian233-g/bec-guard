@@ -1,4 +1,9 @@
-import type { AlertDetail, Dashboard, EmailDetail, Notification } from '../types';
+import type {
+  AlertDetail,
+  Dashboard,
+  EmailDetail,
+  Notification,
+} from '../types';
 export const user = {
   id: 'user-1',
   name: 'Lucía',

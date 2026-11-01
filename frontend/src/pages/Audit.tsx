@@ -85,53 +85,53 @@ function AuditList() {
             role="region"
             aria-label="Tabla de auditoría"
           >
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Acción</th>
-                <th>Actor</th>
-                <th>Rol</th>
-                <th>Recurso</th>
-                <th>IP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resource.data.map((e) => (
-                <tr key={e.id}>
-                  <td>{date(e.created_at)}</td>
-                  <td>
-                    <strong>{e.action}</strong>
-                    {e.details && Object.keys(e.details).length > 0 && (
-                      <details>
-                        <summary>Metadata</summary>
-                        <dl className="facts">
-                          {Object.entries(e.details).map(([key, value]) => (
-                            <div key={key}>
-                              <dt>{key}</dt>
-                              <dd>{value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </details>
-                    )}
-                  </td>
-                  <td>
-                    {e.actor_name || e.actor_user_id || 'Sin actor humano'}
-                  </td>
-                  <td>{label(e.actor_role)}</td>
-                  <td>
-                    {e.resource_type || '—'}
-                    <small className="mono">{e.resource_id}</small>
-                  </td>
-                  <td>
-                    <span className="mono">{e.ip_address || '—'}</span>
-                  </td>
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Acción</th>
+                  <th>Actor</th>
+                  <th>Rol</th>
+                  <th>Recurso</th>
+                  <th>IP</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {resource.data.map((e) => (
+                  <tr key={e.id}>
+                    <td>{date(e.created_at)}</td>
+                    <td>
+                      <strong>{e.action}</strong>
+                      {e.details && Object.keys(e.details).length > 0 && (
+                        <details>
+                          <summary>Metadata</summary>
+                          <dl className="facts">
+                            {Object.entries(e.details).map(([key, value]) => (
+                              <div key={key}>
+                                <dt>{key}</dt>
+                                <dd>{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </details>
+                      )}
+                    </td>
+                    <td>
+                      {e.actor_name || e.actor_user_id || 'Sin actor humano'}
+                    </td>
+                    <td>{label(e.actor_role)}</td>
+                    <td>
+                      {e.resource_type || '—'}
+                      <small className="mono">{e.resource_id}</small>
+                    </td>
+                    <td>
+                      <span className="mono">{e.ip_address || '—'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
       <Pagination

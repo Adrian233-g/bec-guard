@@ -77,7 +77,9 @@ export function Emails() {
                       <Link to={`/emails/${e.id}`}>
                         {e.subject || '(Sin asunto)'}
                       </Link>
-                      <small className="mono message-id-tag">{e.message_id}</small>
+                      <small className="mono message-id-tag">
+                        {e.message_id}
+                      </small>
                     </td>
                     <td>
                       <span className="mono">{e.reply_to || '—'}</span>

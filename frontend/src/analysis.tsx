@@ -199,7 +199,9 @@ export function EmailContent({ email }: { email: EmailDetail }) {
         </div>
         <div>
           <dt>Authentication-Results</dt>
-          <dd className="mono">{email.authentication_results || 'Sin resultados'}</dd>
+          <dd className="mono">
+            {email.authentication_results || 'Sin resultados'}
+          </dd>
         </div>
       </dl>
       <details open>
@@ -222,10 +224,16 @@ export function AnalysisHeadline({ analysis }: { analysis: Analysis }) {
       <div className="threat-summary-meta">
         <p className="threat-bec-title">{label(analysis.bec_type)}</p>
         <div className="score-sub-metrics">
-          <span className="score-sub-pill" title="Puntaje determinista de reglas">
+          <span
+            className="score-sub-pill"
+            title="Puntaje determinista de reglas"
+          >
             Reglas: <strong>{analysis.deterministic_score ?? 0}</strong>
           </span>
-          <span className="score-sub-pill" title="Puntaje de análisis semántico">
+          <span
+            className="score-sub-pill"
+            title="Puntaje de análisis semántico"
+          >
             Semántica: <strong>{analysis.semantic_score ?? 0}</strong>
           </span>
         </div>

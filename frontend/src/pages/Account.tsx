@@ -272,7 +272,9 @@ export function Account() {
               />
             </div>
             <div>
-              <label htmlFor="confirm-password">Confirmar contraseña nueva</label>
+              <label htmlFor="confirm-password">
+                Confirmar contraseña nueva
+              </label>
               <input
                 id="confirm-password"
                 name="confirm"

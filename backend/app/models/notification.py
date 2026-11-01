@@ -33,9 +33,7 @@ class Notification(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "alert_id", "kind", name="uq_notifications_user_alert_kind"
-        ),
+        UniqueConstraint("user_id", "alert_id", "kind", name="uq_notifications_user_alert_kind"),
         CheckConstraint("kind IN ('BEC_ALERT')", name="kind"),
         Index(
             "ix_notifications_user_created_at_id",

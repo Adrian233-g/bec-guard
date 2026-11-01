@@ -118,9 +118,7 @@ def _is_rate_limit_error(error: BaseException) -> bool:
         ):
             return True
         response = getattr(current, "response", None)
-        if response is not None and _is_rate_limit_status(
-            getattr(response, "status_code", None)
-        ):
+        if response is not None and _is_rate_limit_status(getattr(response, "status_code", None)):
             return True
         current = current.__cause__ or current.__context__
     return False

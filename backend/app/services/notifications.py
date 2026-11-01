@@ -19,9 +19,7 @@ def create_alert_notifications(session: Session, alert, analysis: EmailAnalysis)
     access = [User.role.in_((Role.ADMIN, Role.ANALYST))]
     if mailbox is not None:
         access.append(User.id == mailbox.user_id)
-    recipients = set(
-        session.scalars(select(User.id).where(User.is_active.is_(True), or_(*access)))
-    )
+    recipients = set(session.scalars(select(User.id).where(User.is_active.is_(True), or_(*access))))
     session.add_all(
         Notification(user_id=user_id, alert_id=alert.id, kind=NotificationKind.BEC_ALERT)
         for user_id in recipients

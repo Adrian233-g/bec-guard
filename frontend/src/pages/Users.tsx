@@ -196,11 +196,18 @@ function UserManagement() {
                 />
               </div>
             </div>
-            <p className="muted" style={{ margin: '8px 0 16px', fontSize: '0.8rem' }}>
+            <p
+              className="muted"
+              style={{ margin: '8px 0 16px', fontSize: '0.8rem' }}
+            >
               Mínimo 12 caracteres. El usuario puede cambiarla desde su cuenta.
             </p>
             {error && (
-              <p role="alert" className="error" style={{ marginBottom: '14px' }}>
+              <p
+                role="alert"
+                className="error"
+                style={{ marginBottom: '14px' }}
+              >
                 {error}
               </p>
             )}
@@ -240,72 +247,72 @@ function UserManagement() {
             role="region"
             aria-label="Tabla de usuarios"
           >
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resource.data.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <div className="user-cell">
-                      <span className="user-avatar-sm" aria-hidden="true">
-                        {row.name ? row.name[0].toUpperCase() : 'U'}
-                      </span>
-                      <span className="user-name-strong">{row.name}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="mono">{row.email}</span>
-                  </td>
-                  <td>
-                    <select
-                      className="table-select"
-                      aria-label={`Rol de ${row.name}`}
-                      value={row.role}
-                      disabled={busy || row.id === user?.id}
-                      onChange={(e) =>
-                        void update(row, { role: e.target.value as Role })
-                      }
-                    >
-                      {roles.map((r) => (
-                        <option key={r} value={r}>
-                          {label(r)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <span
-                      className={`badge ${row.is_active ? 'badge-low' : 'badge-closed'}`}
-                    >
-                      <span className="badge-dot" aria-hidden="true" />
-                      {row.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className="secondary table-btn-action"
-                      aria-label={`${row.is_active ? 'Desactivar' : 'Activar'} ${row.name}`}
-                      disabled={busy || row.id === user?.id}
-                      onClick={() =>
-                        void update(row, { is_active: !row.is_active })
-                      }
-                    >
-                      {row.is_active ? 'Desactivar' : 'Activar'}
-                    </button>
-                  </td>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Correo</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {resource.data.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <div className="user-cell">
+                        <span className="user-avatar-sm" aria-hidden="true">
+                          {row.name ? row.name[0].toUpperCase() : 'U'}
+                        </span>
+                        <span className="user-name-strong">{row.name}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="mono">{row.email}</span>
+                    </td>
+                    <td>
+                      <select
+                        className="table-select"
+                        aria-label={`Rol de ${row.name}`}
+                        value={row.role}
+                        disabled={busy || row.id === user?.id}
+                        onChange={(e) =>
+                          void update(row, { role: e.target.value as Role })
+                        }
+                      >
+                        {roles.map((r) => (
+                          <option key={r} value={r}>
+                            {label(r)}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${row.is_active ? 'badge-low' : 'badge-closed'}`}
+                      >
+                        <span className="badge-dot" aria-hidden="true" />
+                        {row.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="secondary table-btn-action"
+                        aria-label={`${row.is_active ? 'Desactivar' : 'Activar'} ${row.name}`}
+                        disabled={busy || row.id === user?.id}
+                        onClick={() =>
+                          void update(row, { is_active: !row.is_active })
+                        }
+                      >
+                        {row.is_active ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
       <Pagination

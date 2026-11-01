@@ -54,9 +54,7 @@ def create_analysis(db_session, owner, email_payload, *, score=85, message_id="<
 
 @pytest.fixture
 def notification_setup(db_session, email_payload):
-    owner = create_user(
-        db_session, name="Owner", email="owner@example.com", role=Role.EMPLOYEE
-    )
+    owner = create_user(db_session, name="Owner", email="owner@example.com", role=Role.EMPLOYEE)
     admin = create_user(db_session, name="Admin", email="admin@example.com", role=Role.ADMIN)
     analyst = create_user(
         db_session, name="Analyst", email="analyst@example.com", role=Role.ANALYST
@@ -96,9 +94,7 @@ def test_alert_notifies_owner_and_active_security_team_once(db_session, notifica
     expected = {setup["owner"].id, setup["admin"].id, setup["analyst"].id}
     assert {row.user_id for row in rows} == expected
     assert all(
-        row.alert_id == setup["alert"].id
-        and row.kind == "BEC_ALERT"
-        and row.read_at is None
+        row.alert_id == setup["alert"].id and row.kind == "BEC_ALERT" and row.read_at is None
         for row in rows
     )
 

@@ -139,7 +139,8 @@ export function ContextPage({ kind }: { kind: Kind }) {
         <>
           <div className="table-toolbar">
             <span className="table-count-chip">
-              <strong>{resource.data.length}</strong> {kind === 'executives' ? 'ejecutivos' : 'proveedores'} registrados
+              <strong>{resource.data.length}</strong>{' '}
+              {kind === 'executives' ? 'ejecutivos' : 'proveedores'} registrados
             </span>
           </div>
           <div
@@ -148,82 +149,82 @@ export function ContextPage({ kind }: { kind: Kind }) {
             role="region"
             aria-label="Tabla de contexto organizacional"
           >
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                {kind === 'executives' ? (
-                  <>
-                    <th>Cargo</th>
-                    <th>Departamento</th>
-                    <th>Correo legítimo</th>
-                  </>
-                ) : (
-                  <>
-                    <th>Dominio legítimo</th>
-                    <th>Contacto</th>
-                  </>
-                )}
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resource.data.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <strong>{row.name}</strong>
-                  </td>
-                  {'position' in row ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  {kind === 'executives' ? (
                     <>
-                      <td>{row.position}</td>
-                      <td>{row.department || '—'}</td>
-                      <td>{row.email}</td>
+                      <th>Cargo</th>
+                      <th>Departamento</th>
+                      <th>Correo legítimo</th>
                     </>
                   ) : (
                     <>
-                      <td>{row.domain}</td>
-                      <td>{row.contact_email || '—'}</td>
+                      <th>Dominio legítimo</th>
+                      <th>Contacto</th>
                     </>
                   )}
-                  <td>
-                    <span
-                      className={`badge ${row.is_active ? 'badge-low' : 'badge-closed'}`}
-                    >
-                      <span className="badge-dot" aria-hidden="true" />
-                      {row.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="row-actions">
-                      <button
-                        className="secondary"
-                        disabled={busy}
-                        onClick={() => {
-                          setError('');
-                          setSelected(row);
-                        }}
-                        aria-label={`${write ? 'Editar' : 'Ver'} ${row.name}`}
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resource.data.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <strong>{row.name}</strong>
+                    </td>
+                    {'position' in row ? (
+                      <>
+                        <td>{row.position}</td>
+                        <td>{row.department || '—'}</td>
+                        <td>{row.email}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{row.domain}</td>
+                        <td>{row.contact_email || '—'}</td>
+                      </>
+                    )}
+                    <td>
+                      <span
+                        className={`badge ${row.is_active ? 'badge-low' : 'badge-closed'}`}
                       >
-                        {write ? 'Editar' : 'Ver'}
-                      </button>
-                      {write && (
+                        <span className="badge-dot" aria-hidden="true" />
+                        {row.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="row-actions">
                         <button
                           className="secondary"
                           disabled={busy}
-                          onClick={() => void toggle(row)}
-                          aria-label={`${row.is_active ? 'Desactivar' : 'Activar'} ${row.name}`}
+                          onClick={() => {
+                            setError('');
+                            setSelected(row);
+                          }}
+                          aria-label={`${write ? 'Editar' : 'Ver'} ${row.name}`}
                         >
-                          {row.is_active ? 'Desactivar' : 'Activar'}
+                          {write ? 'Editar' : 'Ver'}
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        {write && (
+                          <button
+                            className="secondary"
+                            disabled={busy}
+                            onClick={() => void toggle(row)}
+                            aria-label={`${row.is_active ? 'Desactivar' : 'Activar'} ${row.name}`}
+                          >
+                            {row.is_active ? 'Desactivar' : 'Activar'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
       <Pagination
