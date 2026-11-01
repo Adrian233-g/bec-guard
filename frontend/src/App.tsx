@@ -93,6 +93,10 @@ function Login() {
         </h1>
         <p>Revisa señales de fraude empresarial y documenta cada decisión.</p>
         <div className="login-rule">Detección explicable · Revisión humana</div>
+        <div className="login-telemetry" aria-label="Estado del sistema">
+          <span className="telemetry-dot" aria-hidden="true" />
+          <span>Gateway SOC Operativo · Sesión Segura TLS</span>
+        </div>
       </section>
       <section className="login-form">
         <form onSubmit={(e) => void submit(e)}>
@@ -161,6 +165,16 @@ function Login() {
           <button disabled={busy} type="submit" aria-busy={busy}>
             {busy ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </button>
+          <div className="login-support">
+            <p className="login-support-prompt">
+              ¿Problemas para acceder a tu cuenta?
+            </p>
+            <p className="login-support-help">
+              Las cuentas son aprovisionadas por el administrador de seguridad.
+              Si olvidaste tu contraseña o requieres acceso, contacta al{' '}
+              <a href="mailto:soc-admin@becguard.local">equipo del SOC</a>.
+            </p>
+          </div>
         </form>
       </section>
     </main>
