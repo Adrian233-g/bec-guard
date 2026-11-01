@@ -44,43 +44,50 @@ export function Emails() {
       ) : !resource.data?.length ? (
         <EmptyState>Aún no hay correos recibidos.</EmptyState>
       ) : (
-        <div
-          className="table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Tabla de correos"
-        >
-          <table>
-            <thead>
-              <tr>
-                <th>Recibido</th>
-                <th>Remitente</th>
-                <th>Asunto</th>
-                <th>Reply-To</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resource.data.map((e) => (
-                <tr key={e.id}>
-                  <td>{date(e.received_at)}</td>
-                  <td>
-                    <div className="sender-name">{e.sender_name}</div>
-                    <small className="mono">{e.sender_email}</small>
-                  </td>
-                  <td className="subject-cell">
-                    <Link to={`/emails/${e.id}`}>
-                      {e.subject || '(Sin asunto)'}
-                    </Link>
-                    <small className="mono message-id-tag">{e.message_id}</small>
-                  </td>
-                  <td>
-                    <span className="mono">{e.reply_to || '—'}</span>
-                  </td>
+        <>
+          <div className="table-toolbar">
+            <span className="table-count-chip">
+              <strong>{resource.data.length}</strong> mensajes registrados
+            </span>
+          </div>
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Tabla de correos"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>Recibido</th>
+                  <th>Remitente</th>
+                  <th>Asunto</th>
+                  <th>Reply-To</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {resource.data.map((e) => (
+                  <tr key={e.id}>
+                    <td>{date(e.received_at)}</td>
+                    <td>
+                      <div className="sender-name">{e.sender_name}</div>
+                      <small className="mono">{e.sender_email}</small>
+                    </td>
+                    <td className="subject-cell">
+                      <Link to={`/emails/${e.id}`}>
+                        {e.subject || '(Sin asunto)'}
+                      </Link>
+                      <small className="mono message-id-tag">{e.message_id}</small>
+                    </td>
+                    <td>
+                      <span className="mono">{e.reply_to || '—'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       <Pagination
         offset={offset}

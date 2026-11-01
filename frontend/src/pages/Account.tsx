@@ -247,36 +247,46 @@ export function Account() {
       >
         <h2 id="password-heading">Seguridad de la sesión</h2>
         <form onSubmit={(e) => void submitPassword(e)}>
-          <label htmlFor="current-password">Contraseña actual</label>
-          <input
-            id="current-password"
-            name="current"
-            type="password"
-            autoComplete="current-password"
-            required
-            maxLength={128}
-          />
-          <label htmlFor="new-password">Contraseña nueva</label>
-          <input
-            id="new-password"
-            name="new"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={12}
-            maxLength={128}
-          />
-          <label htmlFor="confirm-password">Confirmar contraseña nueva</label>
-          <input
-            id="confirm-password"
-            name="confirm"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={12}
-            maxLength={128}
-          />
-          <button disabled={busy}>Cambiar contraseña</button>
+          <div className="form-group">
+            <label htmlFor="current-password">Contraseña actual</label>
+            <input
+              id="current-password"
+              name="current"
+              type="password"
+              autoComplete="current-password"
+              required
+              maxLength={128}
+            />
+          </div>
+          <div className="form-grid-2">
+            <div>
+              <label htmlFor="new-password">Contraseña nueva</label>
+              <input
+                id="new-password"
+                name="new"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={12}
+                maxLength={128}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm-password">Confirmar contraseña nueva</label>
+              <input
+                id="confirm-password"
+                name="confirm"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={12}
+                maxLength={128}
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: '18px' }}>
+            <button disabled={busy}>Cambiar contraseña</button>
+          </div>
         </form>
       </section>
     </>

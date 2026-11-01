@@ -73,12 +73,18 @@ function AuditList() {
       ) : !resource.data?.length ? (
         <EmptyState>No hay eventos con estos filtros.</EmptyState>
       ) : (
-        <div
-          className="table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Tabla de auditoría"
-        >
+        <>
+          <div className="table-toolbar">
+            <span className="table-count-chip">
+              <strong>{resource.data.length}</strong> eventos registrados
+            </span>
+          </div>
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Tabla de auditoría"
+          >
           <table>
             <thead>
               <tr>
@@ -126,6 +132,7 @@ function AuditList() {
             </tbody>
           </table>
         </div>
+        </>
       )}
       <Pagination
         offset={offset}

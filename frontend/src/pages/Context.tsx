@@ -136,12 +136,18 @@ export function ContextPage({ kind }: { kind: Kind }) {
             : 'No hay proveedores registrados.'}
         </EmptyState>
       ) : (
-        <div
-          className="table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Tabla de contexto organizacional"
-        >
+        <>
+          <div className="table-toolbar">
+            <span className="table-count-chip">
+              <strong>{resource.data.length}</strong> {kind === 'executives' ? 'ejecutivos' : 'proveedores'} registrados
+            </span>
+          </div>
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Tabla de contexto organizacional"
+          >
           <table>
             <thead>
               <tr>
@@ -218,6 +224,7 @@ export function ContextPage({ kind }: { kind: Kind }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
       <Pagination
         offset={offset}
@@ -236,32 +243,34 @@ export function ContextPage({ kind }: { kind: Kind }) {
           onClose={() => setSelected(undefined)}
         >
           <form onSubmit={(e) => void save(e)}>
-            {fields[kind].map(([name, title, type, required, maxLength]) => (
-              <div key={name}>
-                <label htmlFor={`context-${name}`}>
-                  {title}
-                  {!required && <small> (opcional)</small>}
-                </label>
-                <input
-                  id={`context-${name}`}
-                  name={name}
-                  type={type}
-                  required={required}
-                  maxLength={maxLength}
-                  readOnly={!write}
-                  autoComplete="off"
-                  defaultValue={
-                    selected && name in selected
-                      ? String(
-                          (selected as unknown as Record<string, unknown>)[
-                            name
-                          ] || '',
-                        )
-                      : ''
-                  }
-                />
-              </div>
-            ))}
+            <div className="form-grid-2">
+              {fields[kind].map(([name, title, type, required, maxLength]) => (
+                <div key={name}>
+                  <label htmlFor={`context-${name}`}>
+                    {title}
+                    {!required && <small> (opcional)</small>}
+                  </label>
+                  <input
+                    id={`context-${name}`}
+                    name={name}
+                    type={type}
+                    required={required}
+                    maxLength={maxLength}
+                    readOnly={!write}
+                    autoComplete="off"
+                    defaultValue={
+                      selected && name in selected
+                        ? String(
+                            (selected as unknown as Record<string, unknown>)[
+                              name
+                            ] || '',
+                          )
+                        : ''
+                    }
+                  />
+                </div>
+              ))}
+            </div>
             {kind === 'vendors' && (
               <p className="muted form-hint">
                 La referencia bancaria se usa únicamente como contexto

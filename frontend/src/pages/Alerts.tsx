@@ -41,9 +41,33 @@ export function Alerts() {
         }
       />
       <div className="filters">
-        <div className="filters-header">
-          <IconFilter aria-hidden="true" />
-          <span>Filtros de triage</span>
+        <div className="filters-top">
+          <div className="filter-segmented" role="tablist" aria-label="Filtro rápido por estado">
+            {[
+              { id: '', title: 'Todas' },
+              { id: 'OPEN', title: 'Abiertas' },
+              { id: 'UNDER_REVIEW', title: 'En revisión' },
+              { id: 'CLOSED', title: 'Cerradas' },
+            ].map((tab) => {
+              const active = (params.get('status') || '') === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={`segmented-tab ${active ? 'active' : ''}`}
+                  onClick={() => filter('status', tab.id)}
+                >
+                  {tab.title}
+                </button>
+              );
+            })}
+          </div>
+          <div className="filters-header">
+            <IconFilter aria-hidden="true" />
+            <span>Filtros avanzados</span>
+          </div>
         </div>
         <div className="filters-controls">
           <label>
@@ -109,12 +133,18 @@ export function Alerts() {
       ) : !resource.data?.length ? (
         <EmptyState>No hay alertas con estos filtros.</EmptyState>
       ) : (
-        <div
-          className="table-wrap"
-          tabIndex={0}
-          role="region"
-          aria-label="Tabla de alertas"
-        >
+        <>
+          <div className="table-toolbar">
+            <span className="table-count-chip">
+              <strong>{resource.data.length}</strong> {resource.data.length === 1 ? 'alerta' : 'alertas'} en cola
+            </span>
+          </div>
+          <div
+            className="table-wrap"
+            tabIndex={0}
+            role="region"
+            aria-label="Tabla de alertas"
+          >
           <table>
             <thead>
               <tr>
@@ -178,6 +208,7 @@ export function Alerts() {
             </tbody>
           </table>
         </div>
+        </>
       )}
       <Pagination
         offset={offset}
