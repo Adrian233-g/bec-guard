@@ -134,26 +134,56 @@ function Protected() {
 function Shell() {
   const { user, logout } = useAuth();
   const [menu, setMenu] = useState(false);
-  const items =
+
+  type NavSection = { title: string; items: [string, string][] };
+
+  const sections: NavSection[] =
     user?.role === 'EMPLOYEE'
       ? [
-          ['/emails', 'Correos'],
-          ['/alerts', 'Alertas'],
+          {
+            title: 'Operaciones',
+            items: [
+              ['/emails', 'Correos'],
+              ['/alerts', 'Alertas'],
+            ],
+          },
+          {
+            title: 'Cuenta',
+            items: [['/account', 'Mi cuenta']],
+          },
         ]
       : [
-          ['/', 'Dashboard'],
-          ['/alerts', 'Alertas'],
-          ['/emails', 'Correos'],
-          ['/executives', 'Ejecutivos'],
-          ['/vendors', 'Proveedores'],
+          {
+            title: 'Monitoreo',
+            items: [
+              ['/', 'Dashboard'],
+              ['/alerts', 'Alertas'],
+              ['/emails', 'Correos'],
+            ],
+          },
+          {
+            title: 'Contexto SOC',
+            items: [
+              ['/executives', 'Ejecutivos'],
+              ['/vendors', 'Proveedores'],
+            ],
+          },
+          {
+            title: 'Gestión',
+            items: [
+              ...(user?.role === 'ADMIN' || user?.role === 'ANALYST'
+                ? ([['/reports', 'Reportes']] as [string, string][])
+                : []),
+              ...(user?.role === 'ADMIN'
+                ? ([
+                    ['/audit', 'Auditoría'],
+                    ['/users', 'Usuarios'],
+                  ] as [string, string][])
+                : []),
+              ['/account', 'Mi cuenta'],
+            ],
+          },
         ];
-  if (user?.role === 'ADMIN' || user?.role === 'ANALYST')
-    items.push(['/reports', 'Reportes']);
-  if (user?.role === 'ADMIN') {
-    items.push(['/audit', 'Auditoría']);
-    items.push(['/users', 'Usuarios']);
-  }
-  items.push(['/account', 'Mi cuenta']);
 
   const iconMap: Record<string, ReactNode> = {
     '/': <IconDashboard />,
@@ -188,18 +218,23 @@ function Shell() {
           Menú
         </button>
         <nav id="main-nav" aria-label="Navegación principal">
-          {items.map(([path, title]) => (
-            <NavLink
-              key={path}
-              to={path}
-              end={path === '/'}
-              onClick={() => setMenu(false)}
-            >
-              <span className="nav-icon" aria-hidden="true">
-                {iconMap[path]}
-              </span>
-              <span>{title}</span>
-            </NavLink>
+          {sections.map((sec) => (
+            <div key={sec.title} className="nav-group">
+              <span className="nav-group-title">{sec.title}</span>
+              {sec.items.map(([path, title]) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  end={path === '/'}
+                  onClick={() => setMenu(false)}
+                >
+                  <span className="nav-icon" aria-hidden="true">
+                    {iconMap[path]}
+                  </span>
+                  <span>{title}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <p className="sidebar-note">
@@ -214,12 +249,17 @@ function Shell() {
             <span className="live-dot" aria-hidden="true" />
             <span>Centro de revisión</span>
           </div>
-          <div>
+          <div className="topbar-user">
             <NotificationBell />
-            <span className="identity">
-              {user?.name}
-              <small>{label(user?.role)}</small>
-            </span>
+            <div className="user-profile-badge">
+              <span className="user-avatar" aria-hidden="true">
+                {user?.name ? user.name[0].toUpperCase() : 'U'}
+              </span>
+              <span className="identity">
+                <span className="user-name">{user?.name}</span>
+                <small>{label(user?.role)}</small>
+              </span>
+            </div>
             <button className="secondary logout-button" onClick={logout}>
               <IconLogOut aria-hidden="true" />
               <span>Cerrar sesión</span>

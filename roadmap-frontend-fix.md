@@ -27,6 +27,11 @@ Mantenemos intacta la paleta de colores institucional (`#172e3f`, `#126b70`, `#f
   - [x] **5.2 Exportación de reportes (`/reports`)**: Panel de generación PDF/Excel con feedback de descarga accesible.
 - [x] **Fase 6: Auditoría final Impeccable (Craft Floor, a11y, responsive y suite verde) [COMPLETADO]**
   - [x] **6.1 Auditoría técnica**: Verificación con detector `impeccable detect` (0 anti-patrones), contraste WCAG AAA/AA, responsive en breakpoints 800px y 1150px, y ejecución íntegra de tests de Vitest (65/65 pasando).
+- [x] **Fase 7: Refinamiento de Componentes Interactivos y UX/UI (Feedback de Pulido) [COMPLETADO]**
+  - [x] **7.1 Modales y Formularios en 2 columnas**: Transformación del panel tosco inline de creación de usuario en un `<Dialog>` modal centrado con desenfoque de fondo y campos en cuadrícula `.form-grid-2` (replicado en ejecutivos, proveedores y contraseña de cuenta).
+  - [x] **7.2 Dropdowns y Selects SOC**: Reemplazo de flechas nativas por chevrons SVG estilizados y creación de `.table-select` para menús desplegables compactos y nítidos dentro de las filas de tablas.
+  - [x] **7.3 Triage con Segmented Tabs y Toolbars**: Botones de estado rápido en cola de alertas (`Todas`, `Abiertas`, `En revisión`, `Cerradas`) y barras de herramientas con contador de registros en todas las vistas de tablas.
+  - [x] **7.4 Navegación agrupada y Avatar**: Agrupación funcional en sidebar (`Monitoreo`, `Contexto SOC`, `Gestión`) y badge de usuario con avatar en el topbar.
 
 ---
 
@@ -44,3 +49,7 @@ Mantenemos intacta la paleta de colores institucional (`#172e3f`, `#126b70`, `#f
 | `feat(ui): email-forensics` | `frontend/src/pages/Emails.tsx`, `frontend/src/styles.css` | ✅ Completado | Bandeja de correos y visor con Message-ID tag y enlaces directos a alertas |
 | `feat(ui): context-users` | `frontend/src/pages/Context.tsx`, `frontend/src/pages/Users.tsx` | ✅ Completado | Badges con micro-dots en VIPs, proveedores y estado de cuentas de usuario |
 | `feat(ui): audit-reports` | `frontend/src/pages/Audit.tsx`, `roadmap-frontend-fix.md` | ✅ Completado | Monospace para IPs y recursos de auditoría, cierre de hoja de ruta |
+| `feat(ui): modal-user-creation` | `frontend/src/pages/Users.tsx`, `frontend/src/styles.css`, `frontend/src/icons.tsx` | ✅ Completado | Creación de usuario en diálogo modal con cuadrícula de 2 columnas |
+| `feat(ui): quick-filter-tabs` | `frontend/src/pages/Alerts.tsx`, `frontend/src/styles.css` | ✅ Completado | Control segmentado de estados y barra de conteo para triage de alertas |
+| `feat(ui): grouped-sidebar-topbar` | `frontend/src/App.tsx`, `frontend/src/styles.css` | ✅ Completado | Navegación por grupos en barra lateral y avatar circular en topbar |
+| `feat(ui): data-table-toolbars` | `Context.tsx`, `Emails.tsx`, `Audit.tsx`, `Account.tsx` | ✅ Completado | Toolbars de conteo y formularios de 2 columnas en contexto y cuenta |
