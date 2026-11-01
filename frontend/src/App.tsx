@@ -98,53 +98,67 @@ function Login() {
         <form onSubmit={(e) => void submit(e)}>
           <h2>Iniciar sesión</h2>
           <p>Accede a tu espacio de revisión.</p>
-          <label htmlFor="email">Correo electrónico</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            required
-            autoFocus
-            maxLength={320}
-          />
-          <label htmlFor="password">Contraseña</label>
-          <div className="password-input-wrap">
+          <fieldset disabled={busy} className="login-fieldset">
+            <label htmlFor="email">Correo electrónico</label>
             <input
-              id="password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="current-password"
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="username"
               required
-              maxLength={128}
-              onKeyDown={handlePasswordKey}
-              onKeyUp={handlePasswordKey}
-              onBlur={() => setCapsLockActive(false)}
+              autoFocus
+              maxLength={320}
+              disabled={busy}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'login-error' : undefined}
             />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={
-                showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
-              }
-              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              tabIndex={-1}
-            >
-              {showPassword ? <IconEyeOff /> : <IconEye />}
-            </button>
-          </div>
-          {capsLockActive && (
-            <div className="caps-lock-pill" role="status">
-              <span aria-hidden="true">⇪</span> Bloq Mayús activado
+            <label htmlFor="password">Contraseña</label>
+            <div className="password-input-wrap">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                maxLength={128}
+                disabled={busy}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'login-error' : undefined}
+                onKeyDown={handlePasswordKey}
+                onKeyUp={handlePasswordKey}
+                onBlur={() => setCapsLockActive(false)}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+                disabled={busy}
+                aria-label={
+                  showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                }
+                title={
+                  showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                }
+                tabIndex={-1}
+              >
+                {showPassword ? <IconEyeOff /> : <IconEye />}
+              </button>
             </div>
-          )}
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          <button disabled={busy} type="submit">
+            {capsLockActive && (
+              <div className="caps-lock-pill" role="status">
+                <span aria-hidden="true">⇪</span> Bloq Mayús activado
+              </div>
+            )}
+          </fieldset>
+          <div className="login-feedback-area" aria-live="polite">
+            {error && (
+              <div id="login-error" role="alert" className="login-error-banner">
+                <span className="error-dot" aria-hidden="true" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+          <button disabled={busy} type="submit" aria-busy={busy}>
             {busy ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </button>
         </form>

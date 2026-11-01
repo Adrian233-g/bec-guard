@@ -907,10 +907,50 @@ dialog::backdrop {
   font-size: 0.9rem;
 }
 
-.login-form .error {
+.login-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.login-feedback-area {
+  min-height: 12px;
+  margin-top: 8px;
+}
+
+.login-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   color: var(--danger);
-  font-size: 0.85rem;
-  margin-top: 12px;
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  animation: loginFadeIn 0.15s ease-out;
+}
+
+.error-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--danger);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+@keyframes loginFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .password-input-wrap {
@@ -970,7 +1010,7 @@ dialog::backdrop {
 
 .login-form button[type='submit'] {
   width: 100%;
-  margin-top: 24px;
+  margin-top: 18px;
   min-height: 42px;
 }
 
