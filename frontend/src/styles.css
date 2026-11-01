@@ -913,7 +913,62 @@ dialog::backdrop {
   margin-top: 12px;
 }
 
-.login-form button {
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 42px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--muted);
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: inline-grid;
+  place-content: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.password-toggle:hover:not(:disabled) {
+  background: var(--surface-ground);
+  color: #172e3f;
+  box-shadow: none;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+
+.caps-lock-pill {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--warning);
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.login-form button[type='submit'] {
   width: 100%;
   margin-top: 24px;
   min-height: 42px;

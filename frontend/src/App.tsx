@@ -29,6 +29,8 @@ import {
   IconAudit,
   IconDashboard,
   IconExecutive,
+  IconEye,
+  IconEyeOff,
   IconLogOut,
   IconMail,
   IconReports,
@@ -41,6 +43,8 @@ function Login() {
   const { user, login } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLockActive, setCapsLockActive] = useState(false);
   const location = useLocation();
   if (user)
     return (
@@ -68,15 +72,20 @@ function Login() {
       setBusy(false);
     }
   }
+
+  function handlePasswordKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    setCapsLockActive(e.getModifierState('CapsLock'));
+  }
+
   return (
     <main className="login">
       <section className="login-intro">
-        <Link className="brand" to="/login">
+        <div className="brand" aria-label="BEC Guard">
           <span className="brand-mark" aria-hidden="true">
             <IconShield width="20" height="20" />
           </span>
           <span>BEC Guard</span>
-        </Link>
+        </div>
         <h1>
           Una decisión informada.
           <br />
@@ -96,17 +105,40 @@ function Login() {
             type="email"
             autoComplete="username"
             required
+            autoFocus
             maxLength={320}
           />
           <label htmlFor="password">Contraseña</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            maxLength={128}
-          />
+          <div className="password-input-wrap">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              maxLength={128}
+              onKeyDown={handlePasswordKey}
+              onKeyUp={handlePasswordKey}
+              onBlur={() => setCapsLockActive(false)}
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={
+                showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+              }
+              title={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              tabIndex={-1}
+            >
+              {showPassword ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
+          {capsLockActive && (
+            <div className="caps-lock-pill" role="status">
+              <span aria-hidden="true">⇪</span> Bloq Mayús activado
+            </div>
+          )}
           {error && (
             <p role="alert" className="error">
               {error}
