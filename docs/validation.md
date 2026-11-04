@@ -523,3 +523,22 @@ Google configurado en .env local con gemini-3.5-flash-lite elegido por el usuari
 key preservada sin imprimirla y archivo 0600. No se llamó al LLM durante pruebas o
 carga; el usuario inicia el consumo desde Analizar correo. No se lee el corpus ni
 se ejecuta holdout, y no cambian políticas del detector. [Guía demo](demo.md).
+
+## Revisión de negaciones en `det-v2` — 2026-11-04
+
+Se corrigieron casos puntuales de expresiones afirmativas con «no dudes», formas
+como «transfiere», urgencia explícitamente negada y frases que evitan o exigen
+verificación/aprobación. Se mantuvieron los pesos, la media híbrida y el umbral
+operativo >=70. El ajuste afecta únicamente análisis futuros; no se alteraron ni
+reprocesaron registros existentes y no hubo llamadas a proveedores.
+
+La suite dirigida pasó 205 pruebas con PostgreSQL aislado. En los 98 ejemplos
+sintéticos de desarrollo, el cálculo exclusivamente determinista siguió dando
+alerta a 11/28 ejemplos BEC y a 0/70 legítimos, antes y después. Estos resultados
+no miden el sistema híbrido ni prueban precisión en correos reales. No se volvió a
+ejecutar el holdout histórico; sus métricas corresponden a det-v1.
+
+La combinación actual sigue siendo asimétrica: reglas=0 e IA=100 producen 50,
+sin alerta. Una simulación de una posible regla de escalamiento basada en cambio
+bancario, urgencia y evasión de verificación no encontró esa combinación en los 98
+casos de desarrollo; por tanto, ese conjunto no permite validarla y no se activó.

@@ -162,7 +162,7 @@ def test_content_rules(email_payload, context, body, expected):
     )
     assert codes(result) == expected
     assert result.score == min(100, sum(s.contribution for s in result.signals))
-    assert result.policy_version == "det-v1"
+    assert result.policy_version == "det-v2"
     assert all(s.description != body for s in result.signals)
 
 
@@ -208,3 +208,53 @@ def test_active_context_loaded_from_postgres(db_session, email_payload):
     assert "EXECUTIVE_IDENTITY_MISMATCH" not in codes(
         assess(email_payload, context, sender_name="Ana Pérez", sender_email="ana@empresa.example")
     )
+
+
+@pytest.mark.parametrize(
+    "body, expected, absent",
+    [
+        ("No dudes en pagar hoy.", {"PAYMENT_REQUEST", "URGENCY"}, set()),
+        ("Paga la factura. No es urgente.", {"PAYMENT_REQUEST"}, {"URGENCY"}),
+        ("Paga la factura. Es urgente.", {"PAYMENT_REQUEST", "URGENCY"}, set()),
+        ("Transfiere los fondos hoy.", {"PAYMENT_REQUEST", "URGENCY"}, set()),
+        (
+            "Necesito pagar hoy. Cambia la cuenta bancaria. No esperes la aprobación de Finanzas.",
+            {"PAYMENT_REQUEST", "BANK_ACCOUNT_CHANGE", "URGENCY", "SECRECY_REQUEST"},
+            set(),
+        ),
+        (
+            "Necesito pagar hoy. Cambia la cuenta bancaria. No verifiques con Finanzas.",
+            {"PAYMENT_REQUEST", "BANK_ACCOUNT_CHANGE", "URGENCY", "SECRECY_REQUEST"},
+            set(),
+        ),
+        (
+            "Necesito pagar hoy. Cambia la cuenta bancaria. No omitas verificar con Finanzas.",
+            {"PAYMENT_REQUEST", "BANK_ACCOUNT_CHANGE", "URGENCY"},
+            {"SECRECY_REQUEST"},
+        ),
+        (
+            "Paga la factura. No olvides verificar la cuenta.",
+            {"PAYMENT_REQUEST"},
+            {"SECRECY_REQUEST", "URGENCY"},
+        ),
+        (
+            "Please pay the invoice. Do not skip approval.",
+            {"PAYMENT_REQUEST"},
+            {"SECRECY_REQUEST"},
+        ),
+    ],
+)
+def test_negation_and_approval_phrasing(email_payload, body, expected, absent):
+    result = assess(
+        email_payload,
+        AnalysisContext([], []),
+        subject="Solicitud",
+        body_text=body,
+        sender_name="Persona",
+        sender_email="persona@example.com",
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert expected <= codes(result)
+    assert not (absent & codes(result))

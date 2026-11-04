@@ -8,7 +8,7 @@ monolito síncrono: reglas + contexto activo → semántica LangChain → scorin
 → resultado y auditoría en un commit. Fase 6 añade BECAlert OPEN para COMPLETED
 >=70 en esa misma transacción, sin ejecutar recomendaciones.
 
-## Motor determinista (`det-v1`)
+## Motor determinista (`det-v2`)
 
 `assess_deterministically(email, context)` es puro. `load_analysis_context(session)`
 consulta ejecutivos y proveedores activos en PostgreSQL. Los lookups exactos de
@@ -59,8 +59,10 @@ Return-Path tiene peso bajo porque puede pertenecer a infraestructura legítima.
 Reply-To null o idéntico no genera señal.
 
 El contenido usa regex/frases modestas en español e inglés. Se excluyen cláusulas
-negadas de solicitudes de pago/cambio/datos; las solicitudes de evitar controles
-se buscan también en cláusulas negativas. No es NLP avanzado: hay negaciones,
+negadas de solicitudes de pago/cambio/datos, con una excepción para la expresión
+afirmativa «no dudes en». Se reconocen «transfiere», urgencia negada y algunas
+formas de omitir aprobación o verificación; se protege la expresión «no omitas
+verificar». Las solicitudes de evitar controles se buscan en cláusulas negativas. No es NLP avanzado: hay negaciones,
 paráfrasis, mensajes reenviados y solicitudes sutiles que se pueden interpretar mal.
 Urgencia o confidencialidad ordinarias no equivalen a BEC.
 
@@ -123,7 +125,9 @@ Referencias de integración: [ChatOpenAI](https://docs.langchain.com/oss/python/
 `combine_scores` calcula 50% determinista + 50% semántico, con redondeo entero
 half-up: `(deterministic_score + semantic_score + 1) // 2`. Única salvaguarda:
 si el determinista es >=70, el resultado final tiene floor 70. Un LLM contradictorio
-no borra evidencia local fuerte. No hay ML, entrenamiento ni calibración estadística.
+no borra evidencia local fuerte. La salvaguarda es asimétrica: reglas=0 e IA=100
+producen 50 y no generan alerta con el umbral actual. No hay entrenamiento ni
+calibración estadística que demuestre que esa combinación es óptima.
 
 | Score | RiskLevel |
 | --- | --- |
@@ -151,7 +155,8 @@ aditivo propio, participan mediante semantic_score en la media.
 UUID, FK RESTRICT a emails, UNIQUE email_id, status, deterministic_score,
 semantic_score/risk_score/risk_level/bec_type nullable, signals JSONB, summary,
 recommended_action, provider, model, policy_version, error_code y analyzed_at UTC.
-La versión almacenada es `det-v1/semantic-v1/hybrid-v1`. No hay índices adicionales
+Los análisis nuevos usan `det-v2/semantic-v1/hybrid-v1`; los históricos conservan
+la versión con que se calcularon. No hay índices adicionales
 a PK y UNIQUE; la consulta real es por email_id. CHECKs validan enums, rangos,
 forma array, thresholds y consistencia entre status y resultado.
 
@@ -228,7 +233,7 @@ sin cuerpos. No permite seleccionar holdout. `--llm` habilita explícitamente
 llamadas externas con el proveedor configurado (98 posibles llamadas con coste);
 sin esa bandera no llama LLM. En CI solo se usan reglas y fakes controlados.
 
-Regresión local determinista: 98 development, legítimos 70 (0–26, media 3.83),
+Resultado histórico de `det-v1`: 98 development, legítimos 70 (0–26, media 3.83),
 BEC 28 (15–90, media 62.64), los 21 hard negatives legítimos LOW. Distribución:
 75 LOW, 12 MEDIUM, 7 HIGH, 4 CRITICAL. Es una comprobación de desarrollo, no
 evaluación formal ni evidencia de rendimiento del pipeline con LLM real.

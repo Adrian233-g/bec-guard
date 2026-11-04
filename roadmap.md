@@ -237,6 +237,24 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
 aviso definido y un analista puede investigar y cerrar el caso con trazabilidad.
 La prueba real con Gmail y Groq continúa en la etapa 5.
 
+### Revisión del puntaje tras los correos de prueba
+
+- [x] Corregir casos objetivos de negación, urgencia y evasión de controles en
+      las reglas (`det-v2`), con ejemplos contrapuestos y pruebas sin proveedor.
+      Umbral >=70 y combinación híbrida sin cambios; los análisis anteriores no
+      se recalculan automáticamente.
+- [ ] Diseñar y validar una política de escalamiento más sensible para la
+      combinación de cambio bancario y evasión de aprobación, comparando falsos
+      positivos y negativos sin ajustar al holdout histórico. El primer correo
+      de prueba pasaría de 40 a 52 puntos en reglas, pero con la puntuación de IA
+      anterior daría 46/100: aún no produciría alerta. Una nueva llamada real
+      podría devolver otro puntaje y requiere autorización.
+- [ ] Revisar si presentar las señales deterministas con pesos al modelo ancla
+      su respuesta; diseñar un experimento antes de afirmar causalidad o cambiar
+      el prompt. La combinación también es asimétrica: reglas=0 e IA=100
+      producen 50 y no generan alerta. No existe aún una evaluación híbrida real
+      representativa para decidir un cambio de política.
+
 ### 5. Verificación y demostración
 
 - [ ] Cubrir permisos, acceso directo entre usuarios, escalamiento, duplicados entre

@@ -1,5 +1,9 @@
 # Evaluación formal congelada - eval-v1
 
+> **Alcance histórico:** estos resultados corresponden a `det-v1`, no a la
+> revisión posterior `det-v2`. No se repitió el holdout ni se evaluó el sistema
+> híbrido real para esta revisión; no atribuir sus métricas a la versión nueva.
+
 Evaluación académica del baseline determinista, ejecutada **una vez** el
 2026-10-21 a las 15:21:51 UTC. El corpus es sintético: **42 casos holdout, 30
 legítimos y 12 BEC**, incluidos 9 hard negatives legítimos. No es un benchmark

@@ -13,7 +13,7 @@ from app.schemas.analysis import DeterministicAssessment, Signal
 from app.schemas.email import EmailIngestRequest
 from app.services.domain_similarity import is_domain_lookalike
 
-DETERMINISTIC_POLICY_VERSION = "det-v1"
+DETERMINISTIC_POLICY_VERSION = "det-v2"
 
 
 @dataclass
@@ -134,12 +134,15 @@ def assess_deterministically(
     clauses = re.split(
         r"[.!?;\n]", normalize_text(email.subject) + "\n" + normalize_text(email.body_text)
     )
+    # "No dudes en pagar" is an affirmative request, not a prohibition.
+    clauses = [re.sub(r"\bno\s+dudes\s+en\s+", "", clause) for clause in clauses]
     positive = " ".join(
         c for c in clauses if not re.search(r"\b(no|not|never|sin|without|don't|do not)\b", c)
     )
     payment = bool(
         re.search(
-            r"\b(pag\w*|abon\w*|transfer\w*|fondos|payment|pay|wire|compra\w*|buy)\b", positive
+            r"\b(pag\w*|abon\w*|transfer\w*|transfi\w*|fondos|payment|pay|wire|compra\w*|buy)\b",
+            positive,
         )
     )
     if payment:
@@ -174,10 +177,12 @@ def assess_deterministically(
             22,
         )
     actionable = payment or bank or sensitive
+    # Negated urgency must not increase risk by itself.
+    urgency_text = re.sub(r"\b(?:no\s+(?:es\s+)?|not\s+(?:is\s+)?)urgent(?:e)?\b", "", text)
     if actionable and re.search(
         r"\b(urgente?|inmediat\w*|hoy|ahora|sin esperar|no hay tiempo|"
         r"today|now|asap|immediately)\b",
-        text,
+        urgency_text,
     ):
         add("URGENCY", "Solicitud de acción con presión temporal.", 8)
     if actionable and re.search(
@@ -186,13 +191,28 @@ def assess_deterministically(
         text,
     ):
         add("AUTHORITY_PRESSURE", "La solicitud invoca identidad o autoridad directiva.", 10)
-    if re.search(
+    # Protect explicit instructions to perform verification from a false
+    # "do not verify" match, while preserving instructions to bypass controls.
+    secrecy_text = re.sub(
+        r"\bno\s+(?:omitas|olvide?s|olviden|dejes\s+de|dejen\s+de)\s+"
+        r"(?:consult\w*|contact\w*|valid\w*|verific\w*|registr\w*|archiv\w*|llam\w*|inform\w*)\b"
+        r"|\bdo\s+not\s+skip\s+approval\b",
+        "",
+        text,
+    )
+    bypass = re.search(
         r"\b(no|sin|evita\w*)\s+(?:\w+\s+){0,3}"
-        r"(consult\w*|contact\w*|valid\w*|verific\w*|registr\w*|archiv\w*|llam\w*|inform\w*)\b"
+        r"(consult\w*|contact\w*|valid\w*|verific\w*|verifiqu\w*|registr\w*|"
+        r"archiv\w*|llam\w*|inform\w*)\b"
         r"|\b(no involucres|fuera del expediente|fuera del sistema|no uses el portal|"
         r"do not (?:tell|call|verify)|keep (?:it|this) secret|skip approval)\b",
-        text,
-    ):
+        secrecy_text,
+    )
+    bypass_approval = actionable and re.search(
+        r"\bno\s+esper\w*\b.{0,60}\baprob\w*\b|\bsin\s+aprob\w*\b",
+        secrecy_text,
+    )
+    if bypass or bypass_approval:
         add(
             "SECRECY_REQUEST", "Se pide evitar registro, consulta o verificación independiente.", 12
         )

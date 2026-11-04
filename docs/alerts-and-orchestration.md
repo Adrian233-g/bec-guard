@@ -25,7 +25,8 @@ sin un filtro que lo consuma. PK y UNIQUE analysis_id cubren identidad e idempot
 
 `ALERT_POLICY_VERSION = "alert-v1"`: únicamente COMPLETED con risk_score >=70
 genera alerta. HIGH/CRITICAL sí, LOW/MEDIUM no, ERROR no aunque deterministic_score
-sea 100. Las políticas det-v1, semantic-v1 y hybrid-v1 permanecen sin cambios.
+sea 100. La política actual es det-v2 / semantic-v1 / hybrid-v1; el umbral
+y la combinación permanecen sin cambios.
 
 `ensure_alert_for_analysis` participa en la transacción del caller y serializa por
 EmailAnalysis. Reutiliza la alerta existente o crea una y BEC_ALERT_CREATED, sin

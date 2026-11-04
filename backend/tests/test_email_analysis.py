@@ -106,7 +106,7 @@ def test_completed_analysis_persisted_idempotent_and_audited(
     assert result["risk_score"] == 95 and result["risk_level"] == "CRITICAL"
     assert result["bec_type"] == "EXECUTIVE_IMPERSONATION"
     assert result["provider"] == "openai" and result["model"] == "fake-model"
-    assert result["policy_version"] == "det-v1/semantic-v1/hybrid-v1"
+    assert result["policy_version"] == "det-v2/semantic-v1/hybrid-v1"
     assert {s["source"] for s in result["signals"]} == {"RULE", "CONTEXT", "SEMANTIC"}
     assert all(s["contribution"] == 0 for s in result["signals"] if s["source"] == "SEMANTIC")
     stored = db_session.get(EmailAnalysis, UUID(result["id"]))

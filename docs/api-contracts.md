@@ -78,7 +78,7 @@ Ejemplo ilustrativo (50% de 80 + 50% de 90 = 85):
   "recommended_action": "Confirmar por un canal independiente conocido.",
   "provider": "openai",
   "model": "<CONFIGURED_MODEL>",
-  "policy_version": "det-v1/semantic-v1/hybrid-v1",
+  "policy_version": "det-v2/semantic-v1/hybrid-v1",
   "error_code": null,
   "analyzed_at": "2026-10-21T05:00:00Z"
 }
