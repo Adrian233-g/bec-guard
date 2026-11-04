@@ -2368,3 +2368,90 @@ summary {
     animation: none !important;
   }
 }
+
+/* Dashboard: keep each measure close to its scope. */
+.dashboard-section-heading {
+  margin: 28px 0 12px;
+}
+.dashboard-section-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.dashboard-section-heading p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.email-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.verdict-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.metric-strip dd,
+.bar-list strong,
+.activity strong {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 768px) {
+  .email-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.workload-breakdown {
+  width: min(100%, 480px);
+  align-self: center;
+}
+.workload-breakdown > p {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.status-track {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #edf2f5;
+  margin-bottom: 12px;
+}
+.status-open {
+  background: #c25e1a;
+}
+.status-review {
+  background: #b5891e;
+}
+.status-closed {
+  background: #2a835b;
+}
+.workload-breakdown dl > div {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 768px) {
+  .workload-breakdown {
+    margin-top: 20px;
+  }
+  .workload-breakdown dl {
+    margin-top: 0;
+  }
+  .workload-breakdown dl > div {
+    padding: 10px;
+  }
+}
+.workload-breakdown dt::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #c25e1a;
+  vertical-align: middle;
+}
+.workload-breakdown dl > div:nth-child(2) dt::before {
+  background: #b5891e;
+}
+.workload-breakdown dl > div:nth-child(3) dt::before {
+  background: #2a835b;
+}

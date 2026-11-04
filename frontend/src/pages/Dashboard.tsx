@@ -18,7 +18,7 @@ export function Dashboard() {
     <>
       <PageHeader
         title="Dashboard"
-        description="Estado operativo de la revisión de fraude empresarial."
+        description="Seguimiento de correos analizados y alertas que requieren revisión."
       />
       {resource.loading ? (
         <LoadingState />
@@ -32,6 +32,8 @@ export function Dashboard() {
 }
 function DashboardContent({ data }: { data: DashboardData }) {
   const recent = useResource<AlertSummary[]>('/alerts?limit=5');
+  const totalAlerts =
+    data.alerts.open + data.alerts.under_review + data.alerts.closed;
   const risks = Object.entries(data.risk_distribution);
   const maxRisk = Math.max(1, ...risks.map(([, n]) => n));
   const maxTypes = Math.max(
@@ -49,61 +51,93 @@ function DashboardContent({ data }: { data: DashboardData }) {
           </div>
           <span>Alertas pendientes</span>
           <strong>{data.alerts.open + data.alerts.under_review}</strong>
-          <Link to="/alerts?status=OPEN">
-            <span>Abrir cola de revisión</span>
+          <Link to="/alerts">
+            <span>Ver cola de alertas</span>
             <IconArrowRight aria-hidden="true" />
           </Link>
         </div>
-        <dl>
+        <div className="workload-breakdown">
+          <p>Estado de las {totalAlerts} alertas</p>
+          <div
+            className="status-track"
+            role="img"
+            aria-label={`${data.alerts.open} alertas abiertas, ${data.alerts.under_review} en revisión y ${data.alerts.closed} cerradas`}
+          >
+            {totalAlerts > 0 && (
+              <>
+                <span
+                  className="status-open"
+                  style={{
+                    width: `${(data.alerts.open / totalAlerts) * 100}%`,
+                  }}
+                />
+                <span
+                  className="status-review"
+                  style={{
+                    width: `${(data.alerts.under_review / totalAlerts) * 100}%`,
+                  }}
+                />
+                <span
+                  className="status-closed"
+                  style={{
+                    width: `${(data.alerts.closed / totalAlerts) * 100}%`,
+                  }}
+                />
+              </>
+            )}
+          </div>
+          <dl>
+            <div>
+              <dt>Abiertas</dt>
+              <dd>{data.alerts.open}</dd>
+            </div>
+            <div>
+              <dt>En revisión</dt>
+              <dd>{data.alerts.under_review}</dd>
+            </div>
+            <div>
+              <dt>Cerradas</dt>
+              <dd>{data.alerts.closed}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+      <section
+        className="dashboard-section"
+        aria-labelledby="email-summary-title"
+      >
+        <div className="dashboard-section-heading">
+          <h2 id="email-summary-title">Correos y análisis</h2>
+          <p>Actividad acumulada de recepción y análisis.</p>
+        </div>
+        <dl className="metric-strip email-metrics">
           <div>
-            <dt>Abiertas</dt>
-            <dd>{data.alerts.open}</dd>
+            <dt>Correos recibidos</dt>
+            <dd>{data.emails_total}</dd>
           </div>
           <div>
-            <dt>En revisión</dt>
-            <dd>{data.alerts.under_review}</dd>
+            <dt>Análisis completos con IA</dt>
+            <dd>{data.analyses_completed}</dd>
           </div>
           <div>
-            <dt>Cerradas</dt>
-            <dd>{data.alerts.closed}</dd>
+            <dt>Análisis limitados a reglas</dt>
+            <dd>{data.analyses_fallback}</dd>
+          </div>
+          <div>
+            <dt>Errores de análisis</dt>
+            <dd className={data.analyses_error ? 'error' : ''}>
+              {data.analyses_error}
+            </dd>
           </div>
         </dl>
       </section>
-      <dl className="metric-strip">
-        <div>
-          <dt>Correos recibidos</dt>
-          <dd>{data.emails_total}</dd>
-        </div>
-        <div>
-          <dt>Análisis completos con IA</dt>
-          <dd>{data.analyses_completed}</dd>
-        </div>
-        <div>
-          <dt>Análisis limitados a reglas</dt>
-          <dd>{data.analyses_fallback}</dd>
-        </div>
-        <div>
-          <dt>Errores de análisis</dt>
-          <dd className={data.analyses_error ? 'error' : ''}>
-            {data.analyses_error}
-          </dd>
-        </div>
-        <div>
-          <dt>BEC confirmados</dt>
-          <dd>{data.verdicts.confirmed_bec}</dd>
-        </div>
-        <div>
-          <dt>Falsos positivos</dt>
-          <dd>{data.verdicts.false_positive}</dd>
-        </div>
-      </dl>
       <div className="dashboard-grid">
         <section className="panel">
-          <h2>Distribución de riesgo</h2>
+          <h2>Riesgo de los análisis</h2>
           <p className="muted">
-            Incluye análisis completos y limitados a reglas. Desde{' '}
-            {ALERT_THRESHOLD}/100 se genera una alerta automática; el riesgo
-            medio (40–69) queda para revisión manual.
+            Cantidad de análisis completos y limitados a reglas por nivel de
+            riesgo. Desde {ALERT_THRESHOLD}/100 se genera una alerta automática;
+            el riesgo medio (40–69) queda para revisión manual.
           </p>
           <ul className="bar-list">
             {risks.map(([risk, count]) => (
@@ -123,7 +157,10 @@ function DashboardContent({ data }: { data: DashboardData }) {
           </ul>
         </section>
         <section className="panel">
-          <h2>Patrones identificados</h2>
+          <h2>Patrones en los análisis</h2>
+          <p className="muted">
+            Cantidad de análisis por tipo BEC identificado.
+          </p>
           {!data.bec_type_distribution.length ? (
             <EmptyState>Aún no hay tipos BEC identificados.</EmptyState>
           ) : (
@@ -143,7 +180,10 @@ function DashboardContent({ data }: { data: DashboardData }) {
           )}
         </section>
         <section className="panel activity-panel">
-          <h2>Alertas de los últimos 7 días</h2>
+          <h2>Alertas generadas por día</h2>
+          <p className="muted">
+            Cantidad de alertas creadas en los últimos 7 días.
+          </p>
           <div className="activity">
             {data.alerts_last_7_days.map((d) => (
               <div key={d.date}>
@@ -163,6 +203,25 @@ function DashboardContent({ data }: { data: DashboardData }) {
           </div>
         </section>
       </div>
+      <section
+        className="dashboard-section"
+        aria-labelledby="alert-results-title"
+      >
+        <div className="dashboard-section-heading">
+          <h2 id="alert-results-title">Resultados de alertas</h2>
+          <p>Veredictos registrados durante la revisión de alertas.</p>
+        </div>
+        <dl className="metric-strip verdict-metrics">
+          <div>
+            <dt>Alertas con BEC confirmado</dt>
+            <dd>{data.verdicts.confirmed_bec}</dd>
+          </div>
+          <div>
+            <dt>Alertas con falso positivo</dt>
+            <dd>{data.verdicts.false_positive}</dd>
+          </div>
+        </dl>
+      </section>
       <section className="panel">
         <div className="section-heading">
           <h2>Alertas recientes</h2>
