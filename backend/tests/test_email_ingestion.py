@@ -230,3 +230,37 @@ def test_unknown_database_failure_is_503_and_atomic(
         with migrated_engine.begin() as connection:
             connection.execute(text("DROP TRIGGER reject_test_email_audit ON public.audit_log"))
             connection.execute(text("DROP FUNCTION public.reject_test_email_audit()"))
+
+
+def test_ingested_order_finds_new_arrivals_even_with_old_message_dates(
+    api_client, db_session, account, auth_settings, email_payload
+):
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.tokens import create_access_token
+
+    mailbox_id = db_session.scalar(select(Mailbox.id).where(Mailbox.user_id == account.id))
+    first = ingest_email(
+        db_session,
+        EmailIngestRequest(**{**email_payload, "message_id": "<recent-date@example>"}),
+        mailbox_id=mailbox_id,
+        actor=account,
+    )
+    second = ingest_email(
+        db_session,
+        EmailIngestRequest(
+            **{
+                **email_payload,
+                "message_id": "<older-date@example>",
+                "received_at": "2020-01-01T00:00:00Z",
+            }
+        ),
+        mailbox_id=mailbox_id,
+        actor=account,
+    )
+    first.ingested_at = datetime.now(UTC) - timedelta(minutes=1)
+    db_session.commit()
+    headers = {"Authorization": f"Bearer {create_access_token(account.id, auth_settings)}"}
+    rows = api_client.get("/api/emails?order=ingested", headers=headers).json()
+    assert [row["id"] for row in rows] == [str(second.id), str(first.id)]
+    assert api_client.get("/api/emails?order=invalid", headers=headers).status_code == 400

@@ -298,3 +298,12 @@ proteger su cuota de Groq.
 
 - [x] Activar alerta desde 50 por decisión del usuario, mantener pesos 50/50 y
       niveles de riesgo; adaptar interfaz y enrutamiento de n8n.
+
+### Novedades en la sesión
+
+- [x] Mostrar avisos emergentes de correos propios y alertas autorizadas sin
+      recargar; actualizar vistas y campana durante la sesión. Consulta local cada
+      10 segundos, sin llamadas a IA; el primer resultado no reproduce historial.
+- [x] Evitar que un analista que pierde el rol siga viendo avisos de alertas de
+      buzones ajenos. Las alertas permanecen visibles hasta cerrarlas o abrirlas;
+      los avisos de correo se cierran después de ocho segundos.

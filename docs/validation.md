@@ -558,3 +558,17 @@ downgrade pasaron tras el ajuste. Frontend: 66 pruebas aprobadas en ejecución
 serial, compilación y lint correctos. Sin llamadas a Groq ni otros proveedores.
 Los workflows ya importados requieren actualizar su nodo de enrutamiento según la
 [guía n8n](../n8n/README.md#actualizar-receptores-ya-existentes-para-el-respaldo).
+
+## Avisos en la sesión
+
+La interfaz consulta los correos propios ordenados por ingestión y las alertas
+accesibles cada 10 segundos, y al recuperar foco. El primer resultado establece
+una referencia sin repetir eventos anteriores. Se actualizan las vistas activas;
+el aviso de correo dura ocho segundos y la alerta requiere una acción para
+cerrarse. No se usa cuota de IA ni se envían notificaciones del navegador.
+
+Se verificaron llegada, persistencia y cierre de avisos, ausencia de duplicados,
+primera consulta fallida, aislamiento tras cambio de rol y orden de ingestión.
+Los avisos dependen de que la aplicación esté abierta y de la conectividad con la
+API; cada consulta revisa hasta 100 correos propios y 50 avisos recientes. Las
+alertas registradas permanecen consultables desde la campana y la lista de alertas.

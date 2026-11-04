@@ -23,6 +23,7 @@ import { AlertDetail } from './pages/AlertDetail';
 import { AuthProvider, useAuth } from './auth';
 import { ErrorState, LoadingState, label } from './components';
 import { NotificationBell } from './NotificationBell';
+import { LiveUpdates } from './LiveUpdates';
 import {
   IconAccount,
   IconAlerts,
@@ -259,6 +260,7 @@ function Shell() {
 
   return (
     <div className="app">
+      {user && <LiveUpdates key={user.id} />}
       <a className="skip" href="#content">
         Saltar al contenido
       </a>

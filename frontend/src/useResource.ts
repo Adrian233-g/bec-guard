@@ -22,6 +22,12 @@ export function useResource<T>(path: string | null) {
       });
     return () => controller.abort();
   }, [path, attempt]);
+  useEffect(() => {
+    if (!path || !/^\/(emails|alerts|dashboard)(\?|\/|$)/.test(path)) return;
+    const update = () => setAttempt((value) => value + 1);
+    window.addEventListener('bec-live-update', update);
+    return () => window.removeEventListener('bec-live-update', update);
+  }, [path]);
   return {
     ...state,
     data: state.path === path ? state.data : null,

@@ -106,7 +106,7 @@ def test_alert_notifies_owner_and_active_security_team_once(db_session, notifica
 
 def test_below_threshold_does_not_notify(db_session, email_payload):
     owner = create_user(db_session, name="Owner", email="owner@example.com", role=Role.EMPLOYEE)
-    _, analysis = create_analysis(db_session, owner, email_payload, score=69)
+    _, analysis = create_analysis(db_session, owner, email_payload, score=49)
     assert ensure_alert_for_analysis(db_session, analysis, actor=None) is None
     db_session.commit()
     assert db_session.scalar(select(func.count()).select_from(Notification)) == 0
@@ -172,3 +172,20 @@ def test_mark_read_and_read_all(api_client, auth_settings, notification_setup):
     assert api_client.post("/api/notifications/read-all").status_code == 401
     assert api_client.post(f"/api/notifications/{notice['id']}/read").status_code == 401
     assert api_client.post("/api/notifications/not-a-uuid/read", headers=owner).status_code == 400
+
+
+def test_demoted_analyst_cannot_read_unowned_alert_notices(
+    api_client, auth_settings, notification_setup, db_session
+):
+    analyst = notification_setup["analyst"]
+    headers = headers_for(analyst, auth_settings)
+    [notice] = api_client.get("/api/notifications", headers=headers).json()
+    analyst.role = Role.EMPLOYEE
+    db_session.commit()
+    assert api_client.get("/api/notifications", headers=headers).json() == []
+    assert api_client.get("/api/notifications/unread-count", headers=headers).json() == {"count": 0}
+    assert (
+        api_client.post(f"/api/notifications/{notice['id']}/read", headers=headers).status_code
+        == 404
+    )
+    assert api_client.post("/api/notifications/read-all", headers=headers).json() == {"updated": 0}

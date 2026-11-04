@@ -31,10 +31,12 @@ export function NotificationBell() {
     const timer = window.setInterval(() => void loadCount(), REFRESH_MS);
     const onFocus = () => void loadCount();
     window.addEventListener('focus', onFocus);
+    window.addEventListener('bec-live-update', onFocus);
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('bec-live-update', onFocus);
     };
   }, [loadCount]);
 
@@ -45,6 +47,15 @@ export function NotificationBell() {
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      void loadItems();
+    };
+    window.addEventListener('bec-live-update', update);
+    return () => window.removeEventListener('bec-live-update', update);
   }, [open]);
 
   async function loadItems() {

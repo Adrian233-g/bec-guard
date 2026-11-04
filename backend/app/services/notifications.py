@@ -26,6 +26,23 @@ def create_alert_notifications(session: Session, alert, analysis: EmailAnalysis)
     )
 
 
+def accessible_notification_ids(user_id: UUID):
+    """Do not expose old security notices after a recipient loses alert access."""
+    return (
+        select(Notification.id)
+        .join(BECAlert, Notification.alert_id == BECAlert.id)
+        .join(EmailAnalysis, BECAlert.analysis_id == EmailAnalysis.id)
+        .join(Email, EmailAnalysis.email_id == Email.id)
+        .join(Mailbox, Mailbox.id == Email.mailbox_id)
+        .join(User, User.id == Notification.user_id)
+        .where(
+            Notification.user_id == user_id,
+            User.is_active.is_(True),
+            or_(User.role.in_((Role.ADMIN, Role.ANALYST)), Mailbox.user_id == user_id),
+        )
+    )
+
+
 def list_notifications(
     session: Session,
     *,
@@ -51,7 +68,7 @@ def list_notifications(
         .join(BECAlert, Notification.alert_id == BECAlert.id)
         .join(EmailAnalysis, BECAlert.analysis_id == EmailAnalysis.id)
         .join(Email, EmailAnalysis.email_id == Email.id)
-        .where(Notification.user_id == user_id)
+        .where(Notification.id.in_(accessible_notification_ids(user_id)))
         .order_by(Notification.created_at.desc(), Notification.id)
         .limit(limit)
         .offset(offset)
@@ -65,7 +82,10 @@ def unread_count(session: Session, *, user_id: UUID) -> int:
     return session.scalar(
         select(func.count())
         .select_from(Notification)
-        .where(Notification.user_id == user_id, Notification.read_at.is_(None))
+        .where(
+            Notification.id.in_(accessible_notification_ids(user_id)),
+            Notification.read_at.is_(None),
+        )
     )
 
 
@@ -73,7 +93,10 @@ def mark_read(session: Session, *, user_id: UUID, notification_id: UUID) -> bool
     """Mark only a notification owned by the caller; never reveal others."""
     notification = session.scalar(
         select(Notification)
-        .where(Notification.id == notification_id, Notification.user_id == user_id)
+        .where(
+            Notification.id == notification_id,
+            Notification.id.in_(accessible_notification_ids(user_id)),
+        )
         .with_for_update()
     )
     if notification is None:
@@ -87,7 +110,10 @@ def mark_read(session: Session, *, user_id: UUID, notification_id: UUID) -> bool
 def mark_all_read(session: Session, *, user_id: UUID) -> int:
     result = session.execute(
         update(Notification)
-        .where(Notification.user_id == user_id, Notification.read_at.is_(None))
+        .where(
+            Notification.id.in_(accessible_notification_ids(user_id)),
+            Notification.read_at.is_(None),
+        )
         .values(read_at=datetime.now(UTC))
         .execution_options(synchronize_session=False)
     )

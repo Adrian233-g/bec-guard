@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -47,6 +47,7 @@ def list_emails(
     actor: AnyUser,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    order: Literal["received", "ingested"] = "received",
 ):
     user_mailboxes = select(Mailbox.id).where(Mailbox.user_id == actor.id)
     statement = (
@@ -65,7 +66,10 @@ def list_emails(
                 Email.ingested_at,
             )
         )
-        .order_by(Email.received_at.desc(), Email.id)
+        .order_by(
+            Email.ingested_at.desc() if order == "ingested" else Email.received_at.desc(),
+            Email.id,
+        )
         .limit(limit)
         .offset(offset)
     )

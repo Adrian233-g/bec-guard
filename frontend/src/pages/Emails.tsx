@@ -29,7 +29,7 @@ export function Emails() {
   const [params, setParams] = useSearchParams();
   const offset = Math.max(0, Number(params.get('offset')) || 0);
   const resource = useResource<EmailSummary[]>(
-    `/emails?limit=25&offset=${offset}`,
+    `/emails?limit=25&order=ingested&offset=${offset}`,
   );
   return (
     <>
