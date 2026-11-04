@@ -24,6 +24,7 @@ import { AuthProvider, useAuth } from './auth';
 import { ErrorState, LoadingState, label } from './components';
 import { NotificationBell } from './NotificationBell';
 import { LiveUpdates } from './LiveUpdates';
+import { ThemeProvider, ThemeToggle } from './theme';
 import {
   IconAccount,
   IconAlerts,
@@ -100,6 +101,7 @@ function Login() {
         </div>
       </section>
       <section className="login-form">
+        <ThemeToggle />
         <form onSubmit={(e) => void submit(e)}>
           <h2>Iniciar sesión</h2>
           <p>Accede a tu espacio de revisión.</p>
@@ -313,6 +315,7 @@ function Shell() {
           </div>
           <div className="topbar-user">
             <NotificationBell />
+            <ThemeToggle />
             <div className="user-profile-badge">
               <span className="user-avatar" aria-hidden="true">
                 {user?.name ? user.name[0].toUpperCase() : 'U'}
@@ -338,40 +341,42 @@ function Shell() {
 export function AppRoutes() {
   const { user } = useAuth();
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route element={<Protected />}>
-        <Route element={<Shell />}>
-          <Route
-            index
-            element={
-              user?.role === 'EMPLOYEE' ? (
-                <Navigate to="/emails" replace />
-              ) : (
-                <Dashboard />
-              )
-            }
-          />
-          <Route path="alerts" element={<Alerts />} />
-          <Route path="alerts/:alertId" element={<AlertDetail />} />
-          <Route path="emails" element={<Emails />} />
-          <Route path="emails/:emailId" element={<EmailDetail />} />
-          <Route
-            path="executives"
-            element={<ContextPage key="executives" kind="executives" />}
-          />
-          <Route
-            path="vendors"
-            element={<ContextPage key="vendors" kind="vendors" />}
-          />
-          <Route path="audit" element={<Audit />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="users" element={<Users />} />
-          <Route path="account" element={<Account />} />
+    <ThemeProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route element={<Protected />}>
+          <Route element={<Shell />}>
+            <Route
+              index
+              element={
+                user?.role === 'EMPLOYEE' ? (
+                  <Navigate to="/emails" replace />
+                ) : (
+                  <Dashboard />
+                )
+              }
+            />
+            <Route path="alerts" element={<Alerts />} />
+            <Route path="alerts/:alertId" element={<AlertDetail />} />
+            <Route path="emails" element={<Emails />} />
+            <Route path="emails/:emailId" element={<EmailDetail />} />
+            <Route
+              path="executives"
+              element={<ContextPage key="executives" kind="executives" />}
+            />
+            <Route
+              path="vendors"
+              element={<ContextPage key="vendors" kind="vendors" />}
+            />
+            <Route path="audit" element={<Audit />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="users" element={<Users />} />
+            <Route path="account" element={<Account />} />
+          </Route>
         </Route>
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ThemeProvider>
   );
 }
 export function App() {
