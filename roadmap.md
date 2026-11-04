@@ -291,5 +291,5 @@ proteger su cuota de Groq.
       reglas fuertes y no evaluar holdout. Ver [evaluación](docs/evaluation.md).
 - [ ] Preparar casos nuevos etiquetados independientemente y evaluar resultados
       semánticos reales con consumo autorizado antes de decidir la política.
-- [ ] Diseñar y validar por separado el comportamiento ante fallo de IA. Hoy el
-      análisis queda en ERROR; no existe un respaldo determinista completo.
+- [x] Implementar respaldo FALLBACK por reglas ante fallo de IA, con señales,
+      código sanitizado y alerta desde 70; no reintenta el proveedor al repetir POST.

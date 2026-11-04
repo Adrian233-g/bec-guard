@@ -19,6 +19,7 @@ class TypeCount(BaseModel):
 class DashboardSummary(BaseModel):
     emails_total: int
     analyses_completed: int
+    analyses_fallback: int
     analyses_error: int
     alerts: dict[str, int]
     verdicts: dict[str, int]

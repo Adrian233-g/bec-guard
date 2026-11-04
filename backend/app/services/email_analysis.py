@@ -54,7 +54,10 @@ def analyze_email(
         if email is None:
             raise HTTPException(404, "Email not found")
         analysis = session.scalar(select(EmailAnalysis).where(EmailAnalysis.email_id == email_id))
-        if analysis is not None and analysis.status == AnalysisStatus.COMPLETED:
+        if analysis is not None and analysis.status in {
+            AnalysisStatus.COMPLETED,
+            AnalysisStatus.FALLBACK,
+        }:
             ensure_alert_for_analysis(session, analysis, actor=actor, peer=peer)
             session.commit()  # Release the parent lock, without another audit/call.
             return analysis
@@ -93,12 +96,29 @@ def analyze_email(
             analysis.signals += [Signal(**s.model_dump()).model_dump() for s in semantic.signals]
             analysis.summary = semantic.summary
             analysis.recommended_action = semantic.recommended_action
+        if analysis.error_code is not None:
+            analysis.status = AnalysisStatus.FALLBACK
+            analysis.risk_score = deterministic.score
+            analysis.risk_level = risk_level(deterministic.score).value
+            analysis.bec_type = (
+                deterministic.bec_type.value
+                if deterministic.score >= 40 and deterministic.bec_type
+                else None
+            )
+            analysis.summary = (
+                "Evaluación limitada a reglas; el análisis de IA no estuvo disponible."
+            )
+            analysis.recommended_action = (
+                "Revisar las señales y verificar solicitudes sensibles por un canal conocido. "
+                "Un puntaje bajo no descarta fraude."
+            )
+            analysis.policy_version = f"{DETERMINISTIC_POLICY_VERSION}/fallback-v1"
         analysis.analyzed_at = datetime.now(UTC)
         session.flush()
         record_analysis_event(
             session,
             AuditAction.EMAIL_ANALYZED
-            if analysis.status == AnalysisStatus.COMPLETED
+            if analysis.status in {AnalysisStatus.COMPLETED, AnalysisStatus.FALLBACK}
             else AuditAction.EMAIL_ANALYSIS_FAILED,
             actor=actor,
             analysis_id=analysis.id,

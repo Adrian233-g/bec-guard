@@ -26,7 +26,7 @@ export interface Signal {
 export interface Analysis {
   id: string;
   email_id: string;
-  status: 'COMPLETED' | 'ERROR';
+  status: 'COMPLETED' | 'FALLBACK' | 'ERROR';
   deterministic_score: number;
   semantic_score: number | null;
   risk_score: number | null;
@@ -121,6 +121,7 @@ export interface Notification {
 export interface Dashboard {
   emails_total: number;
   analyses_completed: number;
+  analyses_fallback: number;
   analyses_error: number;
   alerts: Record<'open' | 'under_review' | 'closed', number>;
   verdicts: Record<'confirmed_bec' | 'false_positive', number>;

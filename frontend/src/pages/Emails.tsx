@@ -164,7 +164,11 @@ function ManualAnalysis({ id }: { id: string }) {
         method: 'POST',
       });
       setState({ analysis, loading: false, error: '' });
-      setNotice('Análisis completado.');
+      setNotice(
+        analysis.status === 'FALLBACK'
+          ? 'Análisis limitado a reglas: la IA no estuvo disponible.'
+          : 'Análisis completado.',
+      );
     } catch (e) {
       if (
         e instanceof ApiError &&
@@ -196,7 +200,7 @@ function ManualAnalysis({ id }: { id: string }) {
         />
       ) : (
         <>
-          {analysis?.status === 'COMPLETED' ? (
+          {analysis && analysis.status !== 'ERROR' ? (
             <>
               <section className="alert-overview">
                 <AnalysisHeadline analysis={analysis} />

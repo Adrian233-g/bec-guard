@@ -176,5 +176,5 @@ las reglas dan 0; un error alto del modelo podría afectar correos legítimos.
 Estos escenarios no justifican activar ni descartar la propuesta por sí solos.
 Falta un conjunto nuevo, etiquetado independientemente, con resultados semánticos
 reales y medición de errores y consumo. Además, el respaldo determinista ante
-fallo de IA requeriría una implementación y validación separadas: actualmente el
-análisis queda en ERROR, no crea un resultado completo de respaldo.
+fallo de IA se implementó después como FALLBACK: su resultado es limitado y no
+demuestra precisión híbrida.

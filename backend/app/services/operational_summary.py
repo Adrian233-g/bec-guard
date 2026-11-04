@@ -45,6 +45,7 @@ def operational_summary(
             .where(*date_conditions(Email.ingested_at, from_date, to_date))
         ),
         "analyses_completed": analyses.get("COMPLETED", 0),
+        "analyses_fallback": analyses.get("FALLBACK", 0),
         "analyses_error": analyses.get("ERROR", 0),
         "alerts": {key.lower(): alerts.get(key, 0) for key in ("OPEN", "UNDER_REVIEW", "CLOSED")},
         "verdicts": {

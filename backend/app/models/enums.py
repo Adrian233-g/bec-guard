@@ -32,6 +32,7 @@ class RiskLevel(StrEnum):
 
 class AnalysisStatus(StrEnum):
     COMPLETED = "COMPLETED"
+    FALLBACK = "FALLBACK"
     ERROR = "ERROR"
 
 

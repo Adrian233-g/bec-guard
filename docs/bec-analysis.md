@@ -84,7 +84,7 @@ No se instala LangGraph ni se construye un agente. No hay tools, memory ni RAG.
 | LLM_TIMEOUT_SECONDS | Default 30 segundos, entre 1 y 120; timeout del adaptador/HTTP. |
 
 La configuración se lee al ejecutar el análisis, no al arrancar ni migrar.
-Proveedor/modelo/key ausentes o configuración inválida producen ERROR. No hay un
+Proveedor/modelo/key ausentes o configuración inválida producen FALLBACK por reglas. No hay un
 modelo predeterminado ni fallback entre proveedores. SDK max_retries=0: el retry
 de aplicación es un POST explícito. La disponibilidad y compatibilidad JSON Schema
 del modelo elegido se deben comprobar en el proveedor; un modelo incompatible
@@ -162,7 +162,7 @@ forma array, thresholds y consistencia entre status y resultado.
 
 No guarda prompt, raw output, key, copia del cuerpo ni labels del dataset.
 Un Email tiene como máximo un análisis actual; no hay historial de ejecuciones.
-COMPLETED se devuelve sin invocar LLM; Fase 6 recupera una alerta faltante cuando
+COMPLETED y FALLBACK se devuelven sin invocar LLM; Fase 6 recupera una alerta faltante cuando
 corresponde y audita solo esa creación. Con alerta existente no repite auditoría. ERROR puede
 reintentarse y actualiza el mismo UUID, recalculando con el contexto actual.
 Un COMPLETED no se invalida al cambiar contexto/modelo/política: no existe endpoint
@@ -173,7 +173,7 @@ análisis. Dos solicitudes del mismo email se serializan; UNIQUE protege además
 la base. Correos distintos no comparten ese bloqueo. Se mantiene la transacción
 durante el LLM: suficiente para el MVP, con coste de ocupación de conexión/worker.
 Timeout es del transporte; no es un deadline global estricto para toda la petición.
-Si una primera ejecución falla, otra solicitud pendiente puede efectuar el retry.
+Si falla la IA, la primera ejecución persiste FALLBACK y las solicitudes posteriores lo reutilizan.
 
 El análisis y EMAIL_ANALYZED o EMAIL_ANALYSIS_FAILED comparten un commit.
 Actor, rol actual, tipo email_analysis, UUID del análisis, IP del peer directo y
@@ -182,39 +182,20 @@ Un fallo de auditoría revierte tanto creación como retry, conservando un ERROR
 anterior cuando existe. Errores de persistencia responden 503 genérico.
 El trigger append-only histórico permanece intacto.
 
-Fase 6 añade BEC_ALERT_CREATED en la misma transacción para COMPLETED >=70.
+BEC_ALERT_CREATED se registra en la misma transacción para COMPLETED o FALLBACK >=70.
 Las llamadas de automatización reutilizan este servicio con actor null y una API
 key acotada, sin sustituir RBAC/JWT humano. Ver [alertas y orquestación](alerts-and-orchestration.md).
 
-## API y ERROR
+## API y respaldo por reglas
 
-| Ruta | Permiso | Resultado |
-| --- | --- | --- |
-| POST /api/emails/{email_id}/analyze | ADMIN, MANAGER, ANALYST | 200 COMPLETED; 429/502/503 ERROR persistido. AUDITOR recibe 403. |
-| GET /api/emails/{email_id}/analysis | Todos los roles autenticados | 200 para COMPLETED o ERROR; 404 sin Email/análisis. |
-
-Token ausente/inválido o usuario inactivo: 401. UUID inválido: 400. Email
-inexistente: 404 antes de configurar LLM. RBAC usa siempre el User actual en DB.
-
-| error_code | POST HTTP |
-| --- | --- |
-| LLM_NOT_CONFIGURED | 503 |
-| LLM_TIMEOUT | 502 |
-| LLM_RATE_LIMITED | 429 |
-| LLM_PROVIDER_ERROR | 502 |
-| LLM_INVALID_OUTPUT | 502 |
-
-La detección de 429 usa metadatos del proveedor (clase y estado
-`429`/`TOO_MANY_REQUESTS`/`RESOURCE_EXHAUSTED`), nunca el texto del error, que
-podría contener claves o prompts. No hay backoff ni reintento automático: la API
-persiste el ERROR y el reintento sigue siendo un POST explícito.
-
-ERROR conserva deterministic_score y señales RULE/CONTEXT. semantic_score,
-risk_score, risk_level, bec_type, summary y recommended_action quedan null;
-**ERROR nunca significa LOW, LEGITIMATE ni score cero**. El POST de error devuelve
-EmailAnalysisResponse completo sanitizado, igual que el GET posterior con HTTP 200.
-Si falló la BD/auditoría se devuelve el 503 genérico de infraestructura, sin afirmar
-que el ERROR se persistió. El contrato HTTP detallado está en [API](api-contracts.md).
+Si el proveedor falla, agota cuota, devuelve salida inválida o no está configurado,
+el servicio guarda FALLBACK y responde HTTP 200. El puntaje final es el de reglas,
+semantic_score queda null y error_code explica el fallo sanitizado. La interfaz
+indica que el resultado es limitado; una puntuación baja no descarta fraude. Se
+crea alerta con el umbral vigente >=70. No se reintenta automáticamente ni al
+repetir POST; los análisis ERROR históricos sí pueden reintentarse. Los fallos de
+base de datos y auditoría responden 503 y revierten la transacción. Ver el
+[contrato](api-contracts.md).
 
 ## Regresión de development y límites
 

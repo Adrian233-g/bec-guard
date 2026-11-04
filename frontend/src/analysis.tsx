@@ -76,6 +76,18 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
     );
   return (
     <>
+      {analysis.status === 'FALLBACK' && (
+        <section className="panel analysis-error" role="status">
+          <h2>Análisis limitado a reglas</h2>
+          <p>
+            La IA no estuvo disponible. Un puntaje bajo no descarta fraude;
+            revisa las señales antes de actuar.
+          </p>
+          {analysis.error_code && (
+            <p className="error-code">{analysis.error_code}</p>
+          )}
+        </section>
+      )}
       <section className="panel">
         <div className="section-heading">
           <h2>Evaluación del sistema</h2>
@@ -142,7 +154,11 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
             </div>
             <div>
               <dt>Semántico</dt>
-              <dd>{analysis.semantic_score}/100</dd>
+              <dd>
+                {analysis.semantic_score == null
+                  ? 'No disponible'
+                  : `${analysis.semantic_score}/100`}
+              </dd>
             </div>
             <div>
               <dt>Política</dt>
@@ -234,7 +250,8 @@ export function AnalysisHeadline({ analysis }: { analysis: Analysis }) {
             className="score-sub-pill"
             title="Puntaje de análisis semántico"
           >
-            Semántica: <strong>{analysis.semantic_score ?? 0}</strong>
+            Semántica:{' '}
+            <strong>{analysis.semantic_score ?? 'No disponible'}</strong>
           </span>
         </div>
       </div>

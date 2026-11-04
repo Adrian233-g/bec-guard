@@ -28,40 +28,53 @@ function setup(
   role: Role = 'ADMIN',
   options: {
     empty?: boolean;
-    analysis?: 'missing' | 'error' | 'completed' | 'medium' | 'rate-limited';
+    analysis?:
+      | 'missing'
+      | 'error'
+      | 'completed'
+      | 'medium'
+      | 'rate-limited'
+      | 'fallback';
     auditError?: boolean;
   } = {},
 ) {
   sessionStorage.setItem(tokenKey, 't');
   let analysis =
-    options.analysis === 'completed'
-      ? alert.analysis
-      : options.analysis === 'medium'
-        ? {
-            ...alert.analysis,
-            deterministic_score: 0,
-            semantic_score: 55,
-            risk_score: 55,
-            risk_level: 'MEDIUM',
-            bec_type: null,
-          }
-        : options.analysis === 'rate-limited'
+    options.analysis === 'fallback'
+      ? {
+          ...alert.analysis,
+          status: 'FALLBACK',
+          semantic_score: null,
+          error_code: 'LLM_RATE_LIMITED',
+        }
+      : options.analysis === 'completed'
+        ? alert.analysis
+        : options.analysis === 'medium'
           ? {
               ...alert.analysis,
-              status: 'ERROR',
-              risk_score: null,
-              risk_level: null,
-              error_code: 'LLM_RATE_LIMITED',
+              deterministic_score: 0,
+              semantic_score: 55,
+              risk_score: 55,
+              risk_level: 'MEDIUM',
+              bec_type: null,
             }
-          : options.analysis === 'error'
+          : options.analysis === 'rate-limited'
             ? {
                 ...alert.analysis,
                 status: 'ERROR',
                 risk_score: null,
                 risk_level: null,
-                error_code: 'LLM_TIMEOUT',
+                error_code: 'LLM_RATE_LIMITED',
               }
-            : null;
+            : options.analysis === 'error'
+              ? {
+                  ...alert.analysis,
+                  status: 'ERROR',
+                  risk_score: null,
+                  risk_level: null,
+                  error_code: 'LLM_TIMEOUT',
+                }
+              : null;
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/auth/me')) return response({ ...user, role });
     if (url.includes('/audit?'))
@@ -367,4 +380,13 @@ it('employee sees their own alert queue without an analyst assignment filter', a
   expect(screen.queryByText('Bilton Novoa')).not.toBeInTheDocument();
   const call = fetch.mock.calls.find(([url]) => url.startsWith('/api/alerts?'));
   expect(call?.[0]).not.toContain('assigned_to=');
+});
+
+it('shows rules-only fallback without inventing a semantic score', async () => {
+  setup('/emails/email-1', 'ADMIN', { analysis: 'fallback' });
+  expect(
+    await screen.findByText('Análisis limitado a reglas'),
+  ).toBeInTheDocument();
+  expect(screen.getAllByText('No disponible').length).toBeGreaterThan(0);
+  expect(screen.getByText('LLM_RATE_LIMITED')).toBeInTheDocument();
 });

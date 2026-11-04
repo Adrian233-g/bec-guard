@@ -542,3 +542,19 @@ La combinación actual sigue siendo asimétrica: reglas=0 e IA=100 producen 50,
 sin alerta. Una simulación de una posible regla de escalamiento basada en cambio
 bancario, urgencia y evasión de verificación no encontró esa combinación en los 98
 casos de desarrollo; por tanto, ese conjunto no permite validarla y no se activó.
+
+## Respaldo por reglas ante fallo de IA
+
+Se verificaron fallos de configuración, cuota, timeout, proveedor y salida no
+válida con proveedores simulados. FALLBACK conserva el error sanitizado y usa el
+puntaje determinista, genera alerta y avisos desde 70, es idempotente, y queda
+identificado en interfaz y reportes. También se verificó el rollback de auditoría
+y que la migración no se revierte mientras existan resultados FALLBACK.
+
+La suite backend completa tuvo 561 aprobadas y dos expectativas obsoletas sobre
+la revisión Alembic; corregidas, el grupo de migraciones, análisis, workflow y
+reportes pasó 57 pruebas. Tres comprobaciones adicionales de configuración y
+downgrade pasaron tras el ajuste. Frontend: 66 pruebas aprobadas en ejecución
+serial, compilación y lint correctos. Sin llamadas a Groq ni otros proveedores.
+Los workflows ya importados requieren actualizar su nodo de enrutamiento según la
+[guía n8n](../n8n/README.md#actualizar-receptores-ya-existentes-para-el-respaldo).

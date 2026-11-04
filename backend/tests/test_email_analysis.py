@@ -25,6 +25,7 @@ from app.schemas.analysis import SemanticAssessment
 from app.schemas.email import EmailIngestRequest
 from app.services.email_analysis import analyze_email, create_semantic_analyzer
 from app.services.email_ingestion import ingest_email
+from app.services.operational_summary import operational_summary
 from app.services.semantic_analysis import LLMErrorCode, SemanticAnalysisError
 
 pytestmark = pytest.mark.integration
@@ -127,61 +128,58 @@ def test_completed_analysis_persisted_idempotent_and_audited(
     )
 
 
-@pytest.mark.parametrize(
-    "code,http_status",
-    [
-        (LLMErrorCode.NOT_CONFIGURED, 503),
-        (LLMErrorCode.TIMEOUT, 502),
-        (LLMErrorCode.RATE_LIMITED, 429),
-        (LLMErrorCode.PROVIDER_ERROR, 502),
-        (LLMErrorCode.INVALID_OUTPUT, 502),
-    ],
-)
-def test_error_is_not_low_and_retry_updates_same_row(
-    api_client,
-    analysis_setup,
-    db_session,
-    code,
-    http_status,
+@pytest.mark.parametrize("code", list(LLMErrorCode))
+def test_rules_fallback_is_audited_alerted_and_idempotent(
+    api_client, analysis_setup, db_session, code
 ):
     email, fake, headers = analysis_setup
     fake.failure = code
     response = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
-    assert response.status_code == http_status
+    assert response.status_code == 200
     result = response.json()
-    assert result["status"] == "ERROR" and result["error_code"] == code
-    for field in [
-        "risk_score",
-        "risk_level",
-        "bec_type",
-        "semantic_score",
-        "summary",
-        "recommended_action",
-    ]:
-        assert result[field] is None
-    assert result["deterministic_score"] == 100
+    assert result["status"] == "FALLBACK" and result["error_code"] == code
+    assert result["deterministic_score"] == result["risk_score"] == 100
+    assert result["risk_level"] == "CRITICAL" and result["semantic_score"] is None
+    assert result["policy_version"] == "det-v2/fallback-v1"
     assert all(s["source"] in {"RULE", "CONTEXT"} for s in result["signals"])
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
+    counts = operational_summary(db_session)
+    assert counts["analyses_fallback"] == 1 and counts["analyses_completed"] == 0
     assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json() == result
     fake.failure = None
-    retry = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
-    assert retry.status_code == 200 and retry.json()["status"] == "COMPLETED"
-    assert retry.json()["id"] == result["id"]
-    assert retry.json()["error_code"] is None
-    assert fake.calls == 2
+    assert api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).json() == result
+    assert fake.calls == 1
     assert db_session.scalar(select(func.count()).select_from(EmailAnalysis)) == 1
     assert set(db_session.scalars(select(AuditLog.action))) == {
         "EMAIL_INGESTED",
-        "EMAIL_ANALYSIS_FAILED",
         "EMAIL_ANALYZED",
         "BEC_ALERT_CREATED",
     }
 
 
+def test_low_rules_fallback_does_not_assert_safe_or_create_alert(
+    api_client, analysis_setup, db_session
+):
+    email, fake, headers = analysis_setup
+    stored = db_session.get(Email, email.id)
+    stored.sender_name, stored.sender_email = "Persona", "person@other.example"
+    stored.reply_to = stored.return_path = stored.authentication_results = None
+    stored.subject, stored.body_text = "Reunión", "Reunión mañana."
+    db_session.commit()
+    fake.failure = LLMErrorCode.TIMEOUT
+    result = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).json()
+    assert result["status"] == "FALLBACK" and result["risk_level"] == "LOW"
+    assert "no descarta fraude" in result["recommended_action"]
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 0
+
+
+@pytest.mark.parametrize("invalid", [False, True])
 def test_real_missing_config_and_invalid_config_are_persisted(
     api_app,
     api_client,
     analysis_setup,
     monkeypatch,
+    invalid,
 ):
     email, _, headers = analysis_setup
 
@@ -190,12 +188,14 @@ def test_real_missing_config_and_invalid_config_are_persisted(
 
         return SemanticAnalyzer(LLMSettings(_env_file=None))
 
-    api_app.dependency_overrides[get_analyzer_factory] = lambda: missing
-    assert api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).status_code == 503
-    monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "invalid-value")
-    api_app.dependency_overrides[get_analyzer_factory] = lambda: create_semantic_analyzer
+    if invalid:
+        monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "invalid-value")
+    api_app.dependency_overrides[get_analyzer_factory] = lambda: (
+        create_semantic_analyzer if invalid else missing
+    )
     response = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
-    assert response.status_code == 503
+    assert response.status_code == 200
+    assert response.json()["status"] == "FALLBACK"
     assert response.json()["error_code"] == "LLM_NOT_CONFIGURED"
     assert "invalid-value" not in response.text
 
@@ -399,17 +399,17 @@ def test_api_through_langchain_structured_boundary(api_app, api_client, analysis
     assert stub.calls == 1
 
 
-def test_retry_audit_failure_preserves_previous_error(api_client, analysis_setup, db_session):
+def test_fallback_blocks_downgrade_without_losing_data(
+    api_client, analysis_setup, db_session, migration_runner
+):
+    from alembic import command
+
     email, fake, headers = analysis_setup
-    fake.failure = LLMErrorCode.TIMEOUT
-    previous = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).json()
-    fake.failure = None
-    with pytest.raises(IntegrityError):
-        analyze_email(
-            db_session,
-            email.id,
-            actor=User(id=uuid4(), role=Role.ADMIN),
-            analyzer_factory=lambda: fake,
-        )
-    current = api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json()
-    assert current == previous
+    fake.failure = LLMErrorCode.RATE_LIMITED
+    response = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
+    assert response.json()["status"] == "FALLBACK"
+    with pytest.raises(RuntimeError, match="rules-only analyses"):
+        migration_runner(command.downgrade, "0014_llm_rate_limited_error_code")
+    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json() == (
+        response.json()
+    )

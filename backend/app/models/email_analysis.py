@@ -40,7 +40,7 @@ class EmailAnalysis(Base):
 
     __table_args__ = (
         UniqueConstraint("email_id"),
-        CheckConstraint("status IN ('COMPLETED', 'ERROR')", name="status"),
+        CheckConstraint("status IN ('COMPLETED', 'FALLBACK', 'ERROR')", name="status"),
         CheckConstraint("deterministic_score BETWEEN 0 AND 100", name="deterministic_score"),
         CheckConstraint("semantic_score BETWEEN 0 AND 100", name="semantic_score"),
         CheckConstraint("risk_score BETWEEN 0 AND 100", name="risk_score"),
@@ -61,6 +61,10 @@ class EmailAnalysis(Base):
             "(status = 'COMPLETED' AND semantic_score IS NOT NULL AND risk_score IS NOT NULL "
             "AND risk_level IS NOT NULL AND summary IS NOT NULL AND recommended_action IS NOT NULL "
             "AND provider IS NOT NULL AND model IS NOT NULL AND error_code IS NULL) OR "
+            "(status = 'FALLBACK' AND semantic_score IS NULL AND risk_score IS NOT NULL "
+            "AND risk_score = deterministic_score AND risk_level IS NOT NULL "
+            "AND summary IS NOT NULL AND recommended_action IS NOT NULL "
+            "AND error_code IS NOT NULL) OR "
             "(status = 'ERROR' AND semantic_score IS NULL AND risk_score IS NULL "
             "AND risk_level IS NULL AND bec_type IS NULL AND summary IS NULL "
             "AND recommended_action IS NULL AND error_code IS NOT NULL)",

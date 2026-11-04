@@ -24,7 +24,7 @@ El índice created_at DESC + id sirve al listado real; no se añade índice por 
 sin un filtro que lo consuma. PK y UNIQUE analysis_id cubren identidad e idempotencia.
 
 `ALERT_POLICY_VERSION = "alert-v1"`: únicamente COMPLETED con risk_score >=70
-genera alerta. HIGH/CRITICAL sí, LOW/MEDIUM no, ERROR no aunque deterministic_score
+genera alerta. COMPLETED y FALLBACK HIGH/CRITICAL sí, LOW/MEDIUM no, ERROR histórico no aunque deterministic_score
 sea 100. La política actual es det-v2 / semantic-v1 / hybrid-v1; el umbral
 y la combinación permanecen sin cambios.
 
@@ -89,15 +89,11 @@ POST /api/automation/emails/{email_id}/analyze reutiliza analyze_email. Devuelve
 {"analysis": "<EmailAnalysisResponse object>", "alert_id": null}
 ```
 
-200 COMPLETED; HIGH/CRITICAL tienen UUID alert_id, LOW/MEDIUM null. ERROR deja
-alert_id y riesgo null; 502 para timeout/provider/output, 503 para configuración
-LLM ausente/inválida. Email inexistente 404. Los objetos de los ejemplos son
-schemas anidados reales, no strings. Fallos de persistencia/auditoría usan el 503
-genérico Database unavailable; no afirman que el resultado se guardó.
-
-ERROR admite retry explícito, conservando analysis.id y creando como máximo una
-alerta cuando el retry resulta HIGH/CRITICAL. COMPLETED reutiliza resultado/alerta.
-No hay bucle automático de retries en n8n.
+200 COMPLETED o FALLBACK; HIGH/CRITICAL tienen UUID alert_id, LOW/MEDIUM null.
+FALLBACK conserva el código del fallo semántico y usa solo reglas; un puntaje bajo
+no descarta fraude. Ambos estados se reutilizan sin reintentos automáticos. Los
+ERROR históricos permiten retry. Los fallos de persistencia/auditoría usan 503
+Database unavailable y revierten el resultado.
 
 ## Auditoría
 
@@ -127,8 +123,8 @@ importador lee BEC_GUARD_BACKEND_URL/AUTOMATION_API_KEY desde el entorno, fija l
 URL en Configuration y crea una credencial Header Auth. No se habilita acceso al
 entorno desde nodos. El JSON guarda referencias a credencial, nunca su valor.
 
-ERROR se evalúa primero; ALERT exige COMPLETED + HIGH/CRITICAL + alert_id;
-NO_ALERT exige COMPLETED + LOW/MEDIUM + alert_id null. Una respuesta inesperada,
+ERROR se evalúa primero; ALERT exige COMPLETED o FALLBACK + HIGH/CRITICAL + alert_id;
+NO_ALERT exige COMPLETED o FALLBACK + LOW/MEDIUM + alert_id null. Una respuesta inesperada,
 fallo de transporte o resultado inconsistente va a ERROR. No contiene lógica BEC,
 regex, comparación de dominios, thresholds de scoring ni política de creación.
 

@@ -43,7 +43,8 @@ def summary_rows(report: OperationalReport) -> list[list]:
     s = report.summary
     return [
         ["Correos recibidos", s["emails_total"]],
-        ["Análisis completados", s["analyses_completed"]],
+        ["Análisis completos con IA", s["analyses_completed"]],
+        ["Análisis limitados a reglas", s["analyses_fallback"]],
         ["Errores de análisis", s["analyses_error"]],
         *[[label(k), v] for k, v in s["alerts"].items()],
         *[[label(k), v] for k, v in s["verdicts"].items()],

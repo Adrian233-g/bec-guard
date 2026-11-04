@@ -42,8 +42,8 @@ aplica reglas, semántica LangChain y scoring híbrido, y guarda EmailAnalysis c
 auditoría atómica. Desde Fase 6, COMPLETED >=70 garantiza BECAlert OPEN/verdict null
 en la misma transacción. No ejecuta recomendaciones.
 
-HTTP 200: EmailAnalysisResponse COMPLETED, creado o reutilizado. Si ya existe
-COMPLETED no llama otra vez al proveedor. Si le falta alerta y score>=70, la crea
+HTTP 200: EmailAnalysisResponse COMPLETED o FALLBACK, creado o reutilizado. Si ya existe
+COMPLETED o FALLBACK no llama otra vez al proveedor. Si le falta alerta y score>=70, la crea
 con BEC_ALERT_CREATED; si ya existe, no repite eventos. Si existe ERROR,
 recalcula y actualiza la misma fila/UUID. UNIQUE email_id y bloqueo de Email
 serializan solicitudes concurrentes; no hay historial de ejecuciones.
@@ -90,16 +90,16 @@ del score ilustrativo. El backend devuelve la lista completa calculada.
 | Campo | Contrato |
 | --- | --- |
 | id / email_id | UUID del análisis actual y del Email. |
-| status | COMPLETED o ERROR. |
+| status | COMPLETED, FALLBACK (solo reglas) o ERROR histórico. |
 | deterministic_score | Entero 0–100, siempre disponible. |
-| semantic_score / risk_score | Enteros 0–100 en COMPLETED; null en ERROR. No son probabilidades. |
+| semantic_score / risk_score | Enteros 0–100 en COMPLETED; en FALLBACK semantic_score es null y risk_score es el puntaje determinista; ambos null en ERROR. No son probabilidades. |
 | risk_level | LOW 0–39, MEDIUM 40–69, HIGH 70–84, CRITICAL 85–100; null en ERROR. |
 | bec_type | EXECUTIVE_IMPERSONATION, VENDOR_FRAUD, BANK_ACCOUNT_CHANGE, SENSITIVE_DATA_REQUEST, OTHER o null. Siempre null bajo 40 y en ERROR. |
 | signals | code estable, description hasta 240, source RULE/CONTEXT/SEMANTIC, contribution 0–100. Semántica tiene contribution=0, pues participa mediante semantic_score. |
-| summary / recommended_action | Hasta 600/400 caracteres, no vacíos en COMPLETED; null en ERROR. |
+| summary / recommended_action | Hasta 600/400 caracteres, no vacíos en COMPLETED y FALLBACK; null en ERROR. |
 | provider / model | Configuración usada cuando está disponible; nullable en ERROR. Nunca claves. |
 | policy_version | Versiones determinista, prompt y scoring. |
-| error_code | Código fijo sanitizado en ERROR; null en COMPLETED. |
+| error_code | Código fijo sanitizado en FALLBACK o ERROR; null en COMPLETED. |
 | analyzed_at | Fecha de la última ejecución, con timezone UTC. |
 
 La clasificación final desde 40 prefiere el patrón observado por reglas/contexto
@@ -109,28 +109,22 @@ locales están en [política BEC](bec-analysis.md#scoring-híbrido-hybrid-v1).
 
 ## Fallo semántico
 
-POST devuelve HTTP 502 para timeout, fallo del proveedor o salida inválida; 503
-para configuración ausente/inválida; y 429 cuando el proveedor informa cuota
-agotada o límite de peticiones. El cuerpo es EmailAnalysisResponse con status
-ERROR y error_code LLM_TIMEOUT / LLM_RATE_LIMITED / LLM_PROVIDER_ERROR /
-LLM_INVALID_OUTPUT / LLM_NOT_CONFIGURED. Conserva deterministic_score y señales
-RULE/CONTEXT. Los campos semántico/final, risk_level, bec_type, summary y
-recommended_action son null.
-
-**ERROR no es LOW ni LEGITIMATE ni score cero.** El resultado ERROR y
-EMAIL_ANALYSIS_FAILED quedan persistidos y pueden consultarse después. Repetir
-POST permite retry; no hay retry automático ni fallback a otro proveedor. Un 429
-solo describe el límite del proveedor: la persona decide cuándo reintentar.
+Cuando el proveedor falla, responde HTTP 200 con status FALLBACK, error_code
+sanitizado, semantic_score null y risk_score igual al puntaje de reglas. Se conserva
+la política `det-v2/fallback-v1`. Se crea alerta si el puntaje alcanza 70. Un
+puntaje bajo no descarta fraude: el análisis semántico no se realizó. No hay
+reintentos automáticos ni reanálisis de FALLBACK; repetir POST devuelve el mismo
+resultado. ERROR históricos aún se pueden reintentar con el mismo UUID.
 
 Un fallo de persistencia/auditoría devuelve el 503 genérico `Database unavailable`
 y revierte el intento. Ese error de infraestructura no tiene el contrato de un
-ERROR semántico persistido. Las respuestas no incluyen raw output, prompt ni
+un análisis persistido. Las respuestas no incluyen raw output, prompt ni
 detalles internos del proveedor.
 
 ## GET /api/emails/{email_id}/analysis
 
 Los cuatro roles autenticados leen EmailAnalysisResponse, con HTTP 200 tanto
-para COMPLETED como ERROR. HTTP 404 si no existe Email o si no tiene análisis.
+para COMPLETED, FALLBACK y ERROR histórico. HTTP 404 si no existe Email o si no tiene análisis.
 No dispara LLM ni modifica/audita el resultado.
 
 Ambas rutas: 401 para token ausente/inválido o usuario inactivo; 400 para UUID
@@ -162,11 +156,9 @@ El POST humano conserva 409. La carrera UNIQUE recupera el ganador persistido.
 ## POST /api/automation/emails/{email_id}/analyze
 
 Misma autenticación. Reutiliza analyze_email y devuelve
-`{analysis: EmailAnalysisResponse, alert_id: UUID|null}`. COMPLETED HIGH/CRITICAL
-incluye alert_id; LOW/MEDIUM y ERROR lo dejan null. HTTP 200 COMPLETED, 429 límite
-del proveedor, 502 fallo LLM, 503 falta de configuración, 404 Email inexistente.
-ERROR nunca significa LOW.
-Retry explícito actualiza el mismo análisis; COMPLETED reutiliza resultado/alerta.
+`{analysis: EmailAnalysisResponse, alert_id: UUID|null}`. COMPLETED o FALLBACK
+HIGH/CRITICAL incluye alert_id; LOW/MEDIUM lo dejan null. Ambos devuelven HTTP 200
+y se reutilizan sin volver a llamar a la IA. Un ERROR histórico admite retry.
 
 La API key se carga lazy, SecretStr y compare_digest. Ausente/corta (<32) en
 configuración: 503 Automation unavailable. Header ausente/incorrecto: 401 genérico.

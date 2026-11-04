@@ -100,6 +100,7 @@ export const notification: Notification = {
 export const dashboard: Dashboard = {
   emails_total: 12,
   analyses_completed: 10,
+  analyses_fallback: 0,
   analyses_error: 2,
   alerts: { open: 3, under_review: 1, closed: 2 },
   verdicts: { confirmed_bec: 1, false_positive: 1 },

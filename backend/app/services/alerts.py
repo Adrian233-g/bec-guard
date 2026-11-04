@@ -20,7 +20,7 @@ def ensure_alert_for_analysis(
 ) -> BECAlert | None:
     """Ensure the alert in the caller's transaction; never commit separately."""
     if (
-        analysis.status != AnalysisStatus.COMPLETED
+        analysis.status not in {AnalysisStatus.COMPLETED, AnalysisStatus.FALLBACK}
         or analysis.risk_score is None
         or analysis.risk_score < ALERT_THRESHOLD
     ):

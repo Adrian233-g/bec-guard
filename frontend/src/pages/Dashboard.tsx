@@ -75,8 +75,12 @@ function DashboardContent({ data }: { data: DashboardData }) {
           <dd>{data.emails_total}</dd>
         </div>
         <div>
-          <dt>Análisis completados</dt>
+          <dt>Análisis completos con IA</dt>
           <dd>{data.analyses_completed}</dd>
+        </div>
+        <div>
+          <dt>Análisis limitados a reglas</dt>
+          <dd>{data.analyses_fallback}</dd>
         </div>
         <div>
           <dt>Errores de análisis</dt>
@@ -97,9 +101,9 @@ function DashboardContent({ data }: { data: DashboardData }) {
         <section className="panel">
           <h2>Distribución de riesgo</h2>
           <p className="muted">
-            Solo análisis completados. Desde {ALERT_THRESHOLD}/100 se genera una
-            alerta automática; el riesgo medio (40–69) queda para revisión
-            manual.
+            Incluye análisis completos y limitados a reglas. Desde{' '}
+            {ALERT_THRESHOLD}/100 se genera una alerta automática; el riesgo
+            medio (40–69) queda para revisión manual.
           </p>
           <ul className="bar-list">
             {risks.map(([risk, count]) => (

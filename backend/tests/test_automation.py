@@ -167,18 +167,9 @@ def test_automation_low_medium_have_no_alert(
     assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 0
 
 
-@pytest.mark.parametrize(
-    "code,http",
-    [
-        (LLMErrorCode.NOT_CONFIGURED, 503),
-        (LLMErrorCode.TIMEOUT, 502),
-        (LLMErrorCode.RATE_LIMITED, 429),
-        (LLMErrorCode.PROVIDER_ERROR, 502),
-        (LLMErrorCode.INVALID_OUTPUT, 502),
-    ],
-)
-def test_error_and_retry_same_analysis_one_alert(
-    api_client, automation_setup, db_session, analysis_stub, code, http
+@pytest.mark.parametrize("code", list(LLMErrorCode))
+def test_automation_rules_fallback_is_idempotent(
+    api_client, automation_setup, db_session, analysis_stub, code
 ):
     headers, payload = automation_setup
     email_id = api_client.post("/api/automation/emails", json=payload, headers=headers).json()[
@@ -186,21 +177,18 @@ def test_error_and_retry_same_analysis_one_alert(
     ]["id"]
     path = f"/api/automation/emails/{email_id}/analyze"
     analysis_stub.failure = code
-    failed = api_client.post(path, headers=headers)
-    assert failed.status_code == http
-    failure = failed.json()
-    assert failure["alert_id"] is None and failure["analysis"]["status"] == "ERROR"
-    assert failure["analysis"]["risk_level"] is failure["analysis"]["risk_score"] is None
-    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 0
+    response = api_client.post(path, headers=headers)
+    assert response.status_code == 200
+    result = response.json()
+    analysis = result["analysis"]
+    assert analysis["status"] == "FALLBACK" and analysis["error_code"] == code
+    assert analysis["risk_score"] == analysis["deterministic_score"]
+    assert analysis["semantic_score"] is None
+    assert bool(result["alert_id"]) == (analysis["risk_score"] >= 70)
     analysis_stub.failure = None
-    retry = api_client.post(path, headers=headers)
-    assert retry.status_code == 200
-    assert retry.json()["analysis"]["id"] == failure["analysis"]["id"]
-    assert retry.json()["alert_id"] is not None
-    assert api_client.post(path, headers=headers).json() == retry.json()
-    assert analysis_stub.calls == 2
+    assert api_client.post(path, headers=headers).json() == result
+    assert analysis_stub.calls == 1
     assert db_session.scalar(select(func.count()).select_from(EmailAnalysis)) == 1
-    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
 
 
 def test_missing_and_invalid_requests(api_client, automation_setup):
