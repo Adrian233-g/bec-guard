@@ -323,9 +323,12 @@ it('admin can maintain executives', async () => {
 });
 it('audit applies small server filters', async () => {
   const fetch = setup('/audit', 'ADMIN');
-  await screen.findByText('BEC_ALERT_CONFIRMED');
-  await userEvent.type(screen.getByLabelText('Acción'), 'BEC_ALERT_CLAIMED');
-  await userEvent.type(screen.getByLabelText('Recurso'), 'bec_alert');
+  await screen.findByText('Alerta confirmada como BEC');
+  await userEvent.selectOptions(
+    screen.getByLabelText('Acción'),
+    'BEC_ALERT_CLAIMED',
+  );
+  await userEvent.selectOptions(screen.getByLabelText('Recurso'), 'bec_alert');
   await userEvent.click(
     screen.getByRole('button', { name: 'Aplicar filtros' }),
   );
@@ -337,6 +340,14 @@ it('audit applies small server filters', async () => {
           url.includes('resource_type=bec_alert'),
       ),
     ).toBe(true),
+  );
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Limpiar filtros' }),
+  );
+  expect(screen.getByLabelText('Acción')).toHaveValue('');
+  expect(screen.getByLabelText('Recurso')).toHaveValue('');
+  await waitFor(() =>
+    expect(fetch.mock.calls.at(-1)?.[0]).not.toContain('action='),
   );
 });
 it('audit 403 preserves session and shows permission feedback', async () => {

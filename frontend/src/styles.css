@@ -2125,8 +2125,9 @@ summary {
   margin: 0;
 }
 
-.audit-filters input {
+.audit-filters select {
   width: 260px;
+  max-width: 100%;
 }
 
 .form-hint {

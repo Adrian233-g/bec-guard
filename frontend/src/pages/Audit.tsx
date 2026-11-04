@@ -13,10 +13,58 @@ import {
 } from '../components';
 import type { AuditEvent } from '../types';
 import { useResource } from '../useResource';
+
+const actions: Record<string, string> = {
+  ADMIN_BOOTSTRAPPED: 'Administrador inicial creado',
+  USER_CREATED: 'Usuario creado',
+  USER_UPDATED: 'Usuario actualizado',
+  USER_PASSWORD_CHANGED: 'Contraseña de usuario cambiada',
+  LOGIN_SUCCEEDED: 'Inicio de sesión exitoso',
+  LOGIN_FAILED: 'Inicio de sesión fallido',
+  LOGIN_INACTIVE: 'Inicio de sesión de usuario inactivo',
+  RBAC_DENIED: 'Acceso denegado por permisos',
+  EMAIL_INGESTED: 'Correo recibido',
+  EMAIL_ANALYZED: 'Correo analizado',
+  EMAIL_ANALYSIS_FAILED: 'Análisis de correo fallido',
+  BEC_ALERT_CREATED: 'Alerta creada',
+  BEC_ALERT_CLAIMED: 'Revisión de alerta asignada',
+  BEC_ALERT_RELEASED: 'Revisión de alerta liberada',
+  BEC_ALERT_CONFIRMED: 'Alerta confirmada como BEC',
+  BEC_ALERT_FALSE_POSITIVE: 'Alerta marcada como falso positivo',
+  EXECUTIVE_CREATED: 'Ejecutivo creado',
+  EXECUTIVE_UPDATED: 'Ejecutivo actualizado',
+  EXECUTIVE_DEACTIVATED: 'Ejecutivo desactivado',
+  EXECUTIVE_REACTIVATED: 'Ejecutivo reactivado',
+  VENDOR_CREATED: 'Proveedor creado',
+  VENDOR_UPDATED: 'Proveedor actualizado',
+  VENDOR_DEACTIVATED: 'Proveedor desactivado',
+  VENDOR_REACTIVATED: 'Proveedor reactivado',
+  MAILBOX_CREATED: 'Buzón creado',
+  MAILBOX_UPDATED: 'Buzón actualizado',
+  MAILBOX_DISCONNECTED: 'Buzón desconectado',
+};
+
+const resourceTypes: Record<string, string> = {
+  user: 'Usuario',
+  email: 'Correo',
+  email_analysis: 'Análisis de correo',
+  bec_alert: 'Alerta',
+  executive: 'Ejecutivo',
+  vendor: 'Proveedor',
+  mailbox: 'Buzón',
+};
+
+function auditLabel(value: string, labels: Record<string, string>) {
+  return labels[value] ?? value.replace(/_/g, ' ');
+}
+
 export function Audit() {
   const { user } = useAuth();
+  const [params] = useSearchParams();
   return user?.role === 'ADMIN' ? (
-    <AuditList />
+    <AuditList
+      key={JSON.stringify([params.get('action'), params.get('resource_type')])}
+    />
   ) : (
     <ErrorState error="No tienes permisos para consultar la auditoría." />
   );
@@ -48,23 +96,55 @@ function AuditList() {
       <form className="filters audit-filters" onSubmit={filter}>
         <label>
           Acción
-          <input
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            maxLength={64}
-            placeholder="BEC_ALERT_CONFIRMED"
-          />
+          <select value={action} onChange={(e) => setAction(e.target.value)}>
+            <option value="">Todas las acciones</option>
+            {action && !actions[action] && (
+              <option value={action}>{auditLabel(action, actions)}</option>
+            )}
+            {Object.entries(actions).map(([value, text]) => (
+              <option key={value} value={value}>
+                {text}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           Recurso
-          <input
+          <select
             value={resourceType}
             onChange={(e) => setResourceType(e.target.value)}
-            maxLength={64}
-            placeholder="bec_alert"
-          />
+          >
+            <option value="">Todos los recursos</option>
+            {resourceType && !resourceTypes[resourceType] && (
+              <option value={resourceType}>
+                {auditLabel(resourceType, resourceTypes)}
+              </option>
+            )}
+            {Object.entries(resourceTypes).map(([value, text]) => (
+              <option key={value} value={value}>
+                {text}
+              </option>
+            ))}
+          </select>
         </label>
         <button type="submit">Aplicar filtros</button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            setAction('');
+            setResourceType('');
+            setParams(new URLSearchParams());
+          }}
+          disabled={
+            !action &&
+            !resourceType &&
+            !params.get('action') &&
+            !params.get('resource_type')
+          }
+        >
+          Limpiar filtros
+        </button>
       </form>
       {resource.loading ? (
         <LoadingState />
@@ -76,7 +156,7 @@ function AuditList() {
         <>
           <div className="table-toolbar">
             <span className="table-count-chip">
-              <strong>{resource.data.length}</strong> eventos registrados
+              <strong>{resource.data.length}</strong> eventos en esta página
             </span>
           </div>
           <div
@@ -101,10 +181,10 @@ function AuditList() {
                   <tr key={e.id}>
                     <td>{date(e.created_at)}</td>
                     <td>
-                      <strong>{e.action}</strong>
+                      <strong>{auditLabel(e.action, actions)}</strong>
                       {e.details && Object.keys(e.details).length > 0 && (
                         <details>
-                          <summary>Metadata</summary>
+                          <summary>Detalles</summary>
                           <dl className="facts">
                             {Object.entries(e.details).map(([key, value]) => (
                               <div key={key}>
@@ -121,7 +201,9 @@ function AuditList() {
                     </td>
                     <td>{label(e.actor_role)}</td>
                     <td>
-                      {e.resource_type || '—'}
+                      {e.resource_type
+                        ? auditLabel(e.resource_type, resourceTypes)
+                        : '—'}
                       <small className="mono">{e.resource_id}</small>
                     </td>
                     <td>
