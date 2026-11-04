@@ -89,7 +89,11 @@ def analyze_email(
         else:
             analysis.status = AnalysisStatus.COMPLETED
             analysis.semantic_score = semantic.risk_score
-            analysis.risk_score = combine_scores(deterministic.score, semantic.risk_score)
+            analysis.risk_score = combine_scores(
+                deterministic.score,
+                semantic.risk_score,
+                signal_codes={signal.code for signal in deterministic.signals},
+            )
             analysis.risk_level = risk_level(analysis.risk_score).value
             kind = resolve_bec_type(analysis.risk_score, deterministic, semantic)
             analysis.bec_type = kind.value if kind else None

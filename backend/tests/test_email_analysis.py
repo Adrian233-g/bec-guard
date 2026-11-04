@@ -107,7 +107,7 @@ def test_completed_analysis_persisted_idempotent_and_audited(
     assert result["risk_score"] == 95 and result["risk_level"] == "CRITICAL"
     assert result["bec_type"] == "EXECUTIVE_IMPERSONATION"
     assert result["provider"] == "openai" and result["model"] == "fake-model"
-    assert result["policy_version"] == "det-v2/semantic-v1/hybrid-v1"
+    assert result["policy_version"] == "det-v3/semantic-v2/hybrid-v2"
     assert {s["source"] for s in result["signals"]} == {"RULE", "CONTEXT", "SEMANTIC"}
     assert all(s["contribution"] == 0 for s in result["signals"] if s["source"] == "SEMANTIC")
     stored = db_session.get(EmailAnalysis, UUID(result["id"]))
@@ -140,7 +140,7 @@ def test_rules_fallback_is_audited_alerted_and_idempotent(
     assert result["status"] == "FALLBACK" and result["error_code"] == code
     assert result["deterministic_score"] == result["risk_score"] == 100
     assert result["risk_level"] == "CRITICAL" and result["semantic_score"] is None
-    assert result["policy_version"] == "det-v2/fallback-v1"
+    assert result["policy_version"] == "det-v3/fallback-v1"
     assert all(s["source"] in {"RULE", "CONTEXT"} for s in result["signals"])
     assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
     counts = operational_summary(db_session)
@@ -413,3 +413,30 @@ def test_fallback_blocks_downgrade_without_losing_data(
     assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json() == (
         response.json()
     )
+
+
+@pytest.mark.parametrize(
+    "body,expected_score,signal",
+    [
+        ("Por favor paga la factura.", 70, "IMPERSONATION_SENSITIVE_REQUEST"),
+        ("¿Puedes revisar el documento?", 50, "IMPERSONATION_REQUEST"),
+    ],
+)
+@pytest.mark.parametrize("llm_failure", [False, True])
+def test_mismatched_executive_request_alerts_even_if_semantic_score_is_zero(
+    api_client, analysis_setup, db_session, body, expected_score, signal, llm_failure
+):
+    email, fake, headers = analysis_setup
+    stored = db_session.get(Email, email.id)
+    stored.sender_email = "otra@external.example"
+    stored.sender_name = "Ana Pérez"
+    stored.reply_to = stored.return_path = stored.authentication_results = None
+    stored.subject, stored.body_text = "Solicitud", body
+    db_session.commit()
+    fake.score = 0
+    fake.failure = LLMErrorCode.RATE_LIMITED if llm_failure else None
+    result = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).json()
+    assert result["status"] == ("FALLBACK" if llm_failure else "COMPLETED")
+    assert result["risk_score"] == expected_score
+    assert signal in {item["code"] for item in result["signals"]}
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1

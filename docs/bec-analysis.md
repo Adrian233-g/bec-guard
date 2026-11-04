@@ -8,7 +8,7 @@ monolito síncrono: reglas + contexto activo → semántica LangChain → scorin
 → resultado y auditoría en un commit. Fase 6 añade BECAlert OPEN para COMPLETED
 >=50 en esa misma transacción, sin ejecutar recomendaciones.
 
-## Motor determinista (`det-v2`)
+## Motor determinista (`det-v3`)
 
 `assess_deterministically(email, context)` es puro. `load_analysis_context(session)`
 consulta ejecutivos y proveedores activos en PostgreSQL. Los lookups exactos de
@@ -17,7 +17,7 @@ Solo el contexto activo participa. No se consulta DNS ni se verifica DKIM.
 
 | Señal | Fuente | Contribución |
 | --- | --- | --- |
-| EXECUTIVE_IDENTITY_MISMATCH | CONTEXT | 35 con dominio desconocido; 15 con dominio registrado. |
+| EXECUTIVE_IDENTITY_MISMATCH | CONTEXT | 35 cuando el nombre o una declaración explícita identifica a un ejecutivo y la dirección no coincide. |
 | EXECUTIVE_DOMAIN_LOOKALIKE | CONTEXT | 25 |
 | VENDOR_IDENTITY_MISMATCH | CONTEXT | 30 |
 | VENDOR_DOMAIN_LOOKALIKE | CONTEXT | 25 |
@@ -30,6 +30,8 @@ Solo el contexto activo participa. No se consulta DNS ni se verifica DKIM.
 | URGENCY | RULE | 8, únicamente junto a una solicitud de pago, cambio bancario o datos. |
 | AUTHORITY_PRESSURE | RULE | 10, únicamente junto a una solicitud relevante. |
 | SECRECY_REQUEST | RULE | 12 por evitar verificación, registro o consulta independiente. |
+| REQUEST_OUTSIDE_ROLE | CONTEXT | 18 si una categoría sensible excede el ámbito explícito. |
+| IMPERSONATION_REQUEST / IMPERSONATION_SENSITIVE_REQUEST | CONTEXT | Contribución necesaria para llegar a 50 / 70. |
 
 Cada código aparece como máximo una vez. El score es `min(100, suma de
 contribution)`, sin parámetros aprendidos ni bonus ocultos. Por el límite, la suma
@@ -39,10 +41,10 @@ sin copiar fragmentos del correo. Dominio desconocido por sí solo no genera rie
 Nombres: comparación por tokens completos, lowercase y sin acentos; se admiten
 títulos/tokens adicionales. Para ejecutivos se requieren al menos dos tokens
 conocidos y email distinto; un primer nombre aislado no basta. Un email ejecutivo
-oficial no produce suplantación por sí mismo. Un dominio exacto de proveedor o
-su contact_email registrado se reconoce como legítimo para estos checks, incluso
-si el contacto externo usa otro dominio. Cambiar de persona dentro del dominio
-oficial no genera mismatch. Esto no descarta una cuenta comprometida.
+oficial no produce suplantación por sí mismo salvo que afirme otra identidad.
+Para proveedores con contacto registrado, una dirección distinta genera mismatch
+incluso dentro del mismo dominio. Sin contacto se usa el dominio como referencia.
+Una coincidencia no descarta una cuenta comprometida.
 
 Similitud de dominios: hostnames ASCII/punycode, lowercase y sin punto final.
 Se exige igual número de labels y exactamente uno distinto, con longitud mínima
@@ -66,7 +68,28 @@ verificar». Las solicitudes de evitar controles se buscan en cláusulas negativ
 paráfrasis, mensajes reenviados y solicitudes sutiles que se pueden interpretar mal.
 Urgencia o confidencialidad ordinarias no equivalen a BEC.
 
-## Análisis semántico (`semantic-v1`)
+## Funciones y comparación de identidad
+
+Cada ejecutivo o proveedor puede tener `responsibilities` (descripción) y
+`allowed_actions` (categorías explícitas). `null` significa que no se han definido;
+`[]` significa que no se ha registrado ninguna de las categorías sensibles. Las
+categorías describen el ámbito esperado, no constituyen una autorización de pago.
+
+Un ejecutivo identificado por nombre mostrado o declaración explícita se compara
+con su dirección exacta. Un proveedor identificado por nombre o dominio se compara con su
+correo de contacto cuando existe, incluso si el dominio coincide; sin contacto se
+compara el dominio. Un dominio parecido también se trata como discrepancia. Una identidad o dominio
+discrepante con una solicitud reconocida suma
+`IMPERSONATION_REQUEST` hasta 50; si es una solicitud de pago, cambio bancario o
+datos sensibles se usa `IMPERSONATION_SENSITIVE_REQUEST` hasta 70. `REQUEST_OUTSIDE_ROLE`
+añade 18 cuando una categoría solicitada no figura en un ámbito definido. La
+combinación híbrida mantiene pisos de 50 y 70 para estas señales, respectivamente.
+Son indicios para revisión humana, no pruebas de fraude o de autoridad. Remitentes
+no registrados que no afirman una identidad conocida no se clasifican por eso.
+Las expresiones de solicitud e identidad son heurísticas y no cubren todas las
+paráfrasis, hilos citados, mensajes multilingües ni cuentas legítimas comprometidas.
+
+## Análisis semántico (`semantic-v2`)
 
 `SemanticAnalyzer` crea un único chat model mediante `create_chat_model(settings)`
 y llama `with_structured_output(SemanticAssessment, method="json_schema")`.
@@ -100,7 +123,9 @@ El prompt distingue BEC de phishing/malware general y prohíbe inventar contexto
 Email se delimita como JSON de datos no confiables en un HumanMessage, separado
 del SystemMessage. Las instrucciones dentro de cualquier campo se ignoran como
 instrucciones del modelo. Se incluyen sender, reply-to, subject, body y hechos
-derivados: coincidencias de identidad y señales técnicas/contextuales. No se
+derivados: coincidencias de identidad y señales técnicas/contextuales. Para contactos
+coincidentes también se envían el cargo, funciones y categorías configuradas (máximo
+cinco coincidencias), sin direcciones de la agenda ni referencias bancarias. No se
 serializan entidades completas, usuarios, JWT, hashes, AuditLog ni credenciales.
 Las referencias bancarias conocidas que aparezcan en los campos se redactan
 localmente, incluso con distinto casing; no se envía bank_account_reference.
@@ -120,12 +145,14 @@ Referencias de integración: [ChatOpenAI](https://docs.langchain.com/oss/python/
 [Gemini](https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai),
 [Groq structured output](https://reference.langchain.com/python/langchain-groq/chat_models/ChatGroq/with_structured_output).
 
-## Scoring híbrido (`hybrid-v1`)
+## Scoring híbrido (`hybrid-v2`)
 
 `combine_scores` calcula 50% determinista + 50% semántico, con redondeo entero
-half-up: `(deterministic_score + semantic_score + 1) // 2`. Única salvaguarda:
+half-up: `(deterministic_score + semantic_score + 1) // 2`. Salvaguardas:
 si el determinista es >=70, el resultado final tiene floor 70. Un LLM contradictorio
-no borra evidencia local fuerte. La salvaguarda es asimétrica: reglas=0 e IA=100
+no borra evidencia local fuerte. Una identidad discrepante con solicitud reconocida
+tiene piso 50, o piso 70 si solicita pago, cambio bancario o datos sensibles.
+La salvaguarda es asimétrica: reglas=0 e IA=100
 producen 50 y generan alerta con el umbral actual. No hay entrenamiento ni
 calibración estadística que demuestre que esa combinación es óptima.
 
@@ -153,7 +180,7 @@ aditivo propio, participan mediante semantic_score en la media.
 UUID, FK RESTRICT a emails, UNIQUE email_id, status, deterministic_score,
 semantic_score/risk_score/risk_level/bec_type nullable, signals JSONB, summary,
 recommended_action, provider, model, policy_version, error_code y analyzed_at UTC.
-Los análisis nuevos usan `det-v2/semantic-v1/hybrid-v1`; los históricos conservan
+Los análisis nuevos usan `det-v3/semantic-v2/hybrid-v2`; los históricos conservan
 la versión con que se calcularon. No hay índices adicionales
 a PK y UNIQUE; la consulta real es por email_id. CHECKs validan enums, rangos,
 forma array, thresholds y consistencia entre status y resultado.

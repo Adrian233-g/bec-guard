@@ -129,7 +129,11 @@ export interface Dashboard {
   bec_type_distribution: { bec_type: BECType; count: number }[];
   alerts_last_7_days: { date: string; count: number }[];
 }
+export type ContextAction =
+  'PAYMENT_REQUEST' | 'BANK_ACCOUNT_CHANGE' | 'SENSITIVE_DATA_REQUEST';
 export interface Executive {
+  responsibilities?: string | null;
+  allowed_actions?: ContextAction[] | null;
   id: string;
   name: string;
   position: string;
@@ -138,6 +142,8 @@ export interface Executive {
   is_active: boolean;
 }
 export interface Vendor {
+  responsibilities?: string | null;
+  allowed_actions?: ContextAction[] | null;
   id: string;
   name: string;
   domain: string;

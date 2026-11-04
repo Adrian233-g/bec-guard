@@ -21,12 +21,14 @@ const fields = {
     ['position', 'Cargo', 'text', true, 200],
     ['department', 'Departamento', 'text', false, 200],
     ['email', 'Correo legítimo', 'email', true, 320],
+    ['responsibilities', 'Funciones', 'text', false, 2000],
   ],
   vendors: [
     ['name', 'Nombre', 'text', true, 200],
     ['domain', 'Dominio legítimo', 'text', true, 253],
     ['contact_email', 'Correo de contacto', 'email', false, 320],
     ['bank_account_reference', 'Referencia bancaria', 'text', false, 256],
+    ['responsibilities', 'Funciones', 'text', false, 2000],
   ],
 } as const;
 export function ContextPage({ kind }: { kind: Kind }) {
@@ -54,12 +56,15 @@ export function ContextPage({ kind }: { kind: Kind }) {
         String(data.get(name) || '').trim() || null,
       ]),
     );
+    const allowedActions = data.has('scope_defined')
+      ? data.getAll('allowed_actions').map(String)
+      : null;
     setBusy(true);
     setError('');
     try {
       await api(`/${kind}${selected ? `/${selected.id}` : ''}`, {
         method: selected ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, allowed_actions: allowedActions }),
       });
       setSelected(undefined);
       setNotice(selected ? 'Cambios guardados.' : 'Registro creado.');
@@ -165,6 +170,7 @@ export function ContextPage({ kind }: { kind: Kind }) {
                       <th>Contacto</th>
                     </>
                   )}
+                  <th>Funciones</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -187,6 +193,7 @@ export function ContextPage({ kind }: { kind: Kind }) {
                         <td>{row.contact_email || '—'}</td>
                       </>
                     )}
+                    <td>{row.responsibilities || 'Sin definir'}</td>
                     <td>
                       <span
                         className={`badge ${row.is_active ? 'badge-low' : 'badge-closed'}`}
@@ -272,6 +279,7 @@ export function ContextPage({ kind }: { kind: Kind }) {
                 </div>
               ))}
             </div>
+            <ContextScope selected={selected} write={write} />
             {kind === 'vendors' && (
               <p className="muted form-hint">
                 La referencia bancaria se usa únicamente como contexto
@@ -302,5 +310,54 @@ export function ContextPage({ kind }: { kind: Kind }) {
         </Dialog>
       )}
     </>
+  );
+}
+
+function ContextScope({
+  selected,
+  write,
+}: {
+  selected: ContextRow | null;
+  write: boolean;
+}) {
+  const [defined, setDefined] = useState(selected?.allowed_actions != null);
+  const choices = [
+    ['PAYMENT_REQUEST', 'Solicitudes de pago'],
+    ['BANK_ACCOUNT_CHANGE', 'Cambios de cuenta bancaria'],
+    ['SENSITIVE_DATA_REQUEST', 'Solicitudes de datos sensibles'],
+  ] as const;
+  return (
+    <fieldset className="context-scope">
+      <legend>Categorías de solicitudes dentro de sus funciones</legend>
+      <label className="checkbox-label">
+        <input
+          type="checkbox"
+          name="scope_defined"
+          checked={defined}
+          disabled={!write}
+          onChange={(event) => setDefined(event.target.checked)}
+        />
+        Definir categorías para este contacto
+      </label>
+      <p className="muted">
+        Si no se define, el sistema no asumirá qué solicitudes están fuera de
+        sus funciones.
+      </p>
+      {defined &&
+        choices.map(([value, title]) => (
+          <label key={value} className="checkbox-label">
+            <input
+              type="checkbox"
+              name="allowed_actions"
+              value={value}
+              disabled={!write}
+              defaultChecked={
+                selected?.allowed_actions?.includes(value) ?? false
+              }
+            />
+            {title}
+          </label>
+        ))}
+    </fieldset>
   );
 }

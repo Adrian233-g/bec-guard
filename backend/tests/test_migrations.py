@@ -27,7 +27,7 @@ def test_upgrade_downgrade_upgrade_and_metadata_match(migrated_engine, migration
     }
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0015_analysis_rules_fallback"
+            "0016_context_responsibilities"
         )
 
     migration_runner(command.downgrade, "0007_bec_alerts")
@@ -225,7 +225,7 @@ def test_role_migration_refuses_downgrade_with_employee_history(
         migration_runner(command.downgrade, "0008_alert_hitl_constraints")
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0015_analysis_rules_fallback"
+            "0016_context_responsibilities"
         )
 
 
@@ -269,7 +269,7 @@ def test_rate_limit_code_refuses_downgrade_before_0013(
         migration_runner(command.downgrade, "0013_notifications")
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT version_num FROM public.alembic_version")) == (
-            "0015_analysis_rules_fallback"
+            "0016_context_responsibilities"
         )
 
 

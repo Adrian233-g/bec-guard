@@ -52,7 +52,9 @@ def check_development(
             except SemanticAnalysisError as error:
                 errors[error.code.value] += 1
                 continue
-            score = combine_scores(det.score, semantic.risk_score)
+            score = combine_scores(
+                det.score, semantic.risk_score, signal_codes={s.code for s in det.signals}
+            )
         scores[case.label.value].append(score)
         level = risk_level(score).value
         levels[level] += 1

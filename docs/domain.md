@@ -126,9 +126,9 @@ ni copia del cuerpo del correo. [Campos y privacidad](reporting.md).
 
 `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
 
-Categorías implementadas por hybrid-v1: 0–39 LOW, 40–69 MEDIUM, 70–84 HIGH,
+Categorías implementadas por hybrid-v2: 0–39 LOW, 40–69 MEDIUM, 70–84 HIGH,
 85–100 CRITICAL. Score no es probabilidad estadística. La versión completa
-actual es det-v2/semantic-v1/hybrid-v1; los análisis anteriores conservan su versión.
+actual es det-v3/semantic-v2/hybrid-v2; los análisis anteriores conservan su versión.
 
 ### AlertStatus
 

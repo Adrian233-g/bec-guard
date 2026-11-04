@@ -367,3 +367,33 @@ def test_optional_department_can_be_cleared(api_client, headers):
     )
     assert response.status_code == 200
     assert response.json()["department"] is None
+
+
+def test_context_responsibilities_and_scope_are_audited_and_validated(
+    api_client, headers, context, db_session
+):
+    path = context["path"]
+    created = api_client.post(path, json=context["body"], headers=headers).json()
+    update = {
+        "responsibilities": "Gestiona solicitudes de pago",
+        "allowed_actions": ["PAYMENT_REQUEST"],
+    }
+    response = api_client.patch(f"{path}/{created['id']}", json=update, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["responsibilities"] == update["responsibilities"]
+    assert response.json()["allowed_actions"] == ["PAYMENT_REQUEST"]
+    event = db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.resource_id == UUID(created["id"]),
+            AuditLog.action == f"{context['kind'].upper()}_UPDATED",
+        )
+    )
+    assert event.details == {"changed_fields": "allowed_actions,responsibilities"}
+    invalid = api_client.patch(
+        f"{path}/{created['id']}", json={"allowed_actions": ["INVALID"]}, headers=headers
+    )
+    assert invalid.status_code == 400
+    cleared = api_client.patch(
+        f"{path}/{created['id']}", json={"allowed_actions": None}, headers=headers
+    )
+    assert cleared.status_code == 200 and cleared.json()["allowed_actions"] is None

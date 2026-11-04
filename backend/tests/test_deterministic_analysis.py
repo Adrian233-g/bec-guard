@@ -78,7 +78,7 @@ def test_impersonation_and_lookalike_without_display_name(email_payload, context
 
 
 def test_vendor_domain_and_registered_external_contact(email_payload, context):
-    for sender in ["newperson@andinos.example", "ventas@andinos.example"]:
+    for sender in ["ventas@andinos.example"]:
         result = assess(
             email_payload, context, sender_name="Suministros Andinos", sender_email=sender
         )
@@ -162,7 +162,7 @@ def test_content_rules(email_payload, context, body, expected):
     )
     assert codes(result) == expected
     assert result.score == min(100, sum(s.contribution for s in result.signals))
-    assert result.policy_version == "det-v2"
+    assert result.policy_version == "det-v3"
     assert all(s.description != body for s in result.signals)
 
 
@@ -258,3 +258,160 @@ def test_negation_and_approval_phrasing(email_payload, body, expected, absent):
     )
     assert expected <= codes(result)
     assert not (absent & codes(result))
+
+
+@pytest.mark.parametrize(
+    "subject,body",
+    [
+        ("Pago", "Por favor paga la factura del proveedor."),
+        ("Solicitud", "Solicito cambiar la cuenta bancaria para el pago."),
+        ("Acceso", "Envía las contraseñas de acceso."),
+    ],
+)
+def test_mismatched_executive_with_sensitive_request_escalates(
+    email_payload, context, subject, body
+):
+    from app.services.hybrid_scoring import combine_scores
+
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Ana Pérez",
+        sender_email="ana@otro.example",
+        subject=subject,
+        body_text=body,
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert "IMPERSONATION_SENSITIVE_REQUEST" in codes(result)
+    assert result.score >= 70
+    assert combine_scores(result.score, 0, signal_codes=codes(result)) >= 70
+
+
+def test_other_vendor_address_same_domain_is_not_registered_contact(email_payload, context):
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Suministros Andinos",
+        sender_email="nuevo@andinos.example",
+        subject="Factura",
+        body_text="Solicito pagar la factura.",
+        reply_to=None,
+        return_path=None,
+    )
+    assert {"VENDOR_IDENTITY_MISMATCH", "IMPERSONATION_SENSITIVE_REQUEST"} <= codes(result)
+    assert result.score >= 70
+
+
+def test_known_contact_request_outside_scope_and_unknown_scope(email_payload, context):
+    context.executives[0].allowed_actions = []
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Ana Pérez",
+        sender_email="ana@empresa.example",
+        subject="Factura",
+        body_text="Por favor paga esta factura.",
+        reply_to=None,
+        return_path=None,
+    )
+    assert "REQUEST_OUTSIDE_ROLE" in codes(result)
+    assert "IMPERSONATION_SENSITIVE_REQUEST" not in codes(result)
+    context.executives[0].allowed_actions = None
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Ana Pérez",
+        sender_email="ana@empresa.example",
+        subject="Factura",
+        body_text="Por favor paga esta factura.",
+        reply_to=None,
+        return_path=None,
+    )
+    assert "REQUEST_OUTSIDE_ROLE" not in codes(result)
+
+
+def test_claim_in_body_and_general_request_floor(email_payload, context):
+    from app.services.hybrid_scoring import combine_scores
+
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Contacto",
+        sender_email="otro@outside.example",
+        subject="Consulta",
+        body_text="Soy Ana Pérez. ¿Puedes revisar el documento?",
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert {"EXECUTIVE_IDENTITY_MISMATCH", "IMPERSONATION_REQUEST"} <= codes(result)
+    assert result.score >= 50
+    assert combine_scores(result.score, 0, signal_codes=codes(result)) >= 50
+
+
+def test_unknown_sender_is_not_impersonation_without_claim(email_payload, context):
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Otra Persona",
+        sender_email="nueva@other.example",
+        subject="Consulta",
+        body_text="¿Puedes revisar el documento?",
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert "EXECUTIVE_IDENTITY_MISMATCH" not in codes(result)
+    assert "IMPERSONATION_REQUEST" not in codes(result)
+
+
+def test_vendor_domain_identifies_unregistered_sender_without_display_name(email_payload, context):
+    result = assess(
+        email_payload,
+        context,
+        sender_name=None,
+        sender_email="nuevo@andinos.example",
+        subject="Factura",
+        body_text="Por favor paga la factura.",
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert {"VENDOR_IDENTITY_MISMATCH", "IMPERSONATION_SENSITIVE_REQUEST"} <= codes(result)
+    assert result.score >= 70
+
+
+def test_lookalike_domain_with_payment_escalates_without_display_name(email_payload, context):
+    result = assess(
+        email_payload,
+        context,
+        sender_name=None,
+        sender_email="ana@ernpresa.example",
+        subject="Factura",
+        body_text="Por favor paga la factura.",
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert {"EXECUTIVE_DOMAIN_LOOKALIKE", "IMPERSONATION_SENSITIVE_REQUEST"} <= codes(result)
+    assert result.score >= 70
+
+
+def test_registered_contact_uses_configured_scope_without_assuming_safety(email_payload, context):
+    context.executives[0].allowed_actions = ["PAYMENT_REQUEST"]
+    result = assess(
+        email_payload,
+        context,
+        sender_name="Ana Pérez",
+        sender_email="ana@empresa.example",
+        subject="Pago",
+        body_text="Por favor paga la factura.",
+        reply_to=None,
+        return_path=None,
+        authentication_results=None,
+    )
+    assert "PAYMENT_REQUEST" in codes(result)
+    assert "REQUEST_OUTSIDE_ROLE" not in codes(result)
+    assert "IMPERSONATION_SENSITIVE_REQUEST" not in codes(result)

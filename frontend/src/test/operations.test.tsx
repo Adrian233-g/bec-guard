@@ -411,3 +411,32 @@ it('shows the associated alert for medium risk at 55', async () => {
     await screen.findByRole('link', { name: 'Abrir alerta asociada' }),
   ).toBeInTheDocument();
 });
+
+it('configures the sensitive request scope and responsibilities for an executive', async () => {
+  const fetch = setup('/executives');
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Añadir ejecutivo' }),
+  );
+  await userEvent.type(screen.getByLabelText('Nombre'), 'Valeria Montes');
+  await userEvent.type(screen.getByLabelText('Cargo'), 'Directora');
+  await userEvent.type(
+    screen.getByLabelText('Correo legítimo'),
+    'valeria@becguard.com',
+  );
+  await userEvent.type(screen.getByLabelText(/Funciones/), 'Coordina pagos');
+  await userEvent.click(
+    screen.getByLabelText('Definir categorías para este contacto'),
+  );
+  await userEvent.click(screen.getByLabelText('Solicitudes de pago'));
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Guardar cambios' }),
+  );
+  await screen.findByText('Registro creado.');
+  const request = fetch.mock.calls.find(
+    ([url, init]) => url === '/api/executives' && init?.method === 'POST',
+  );
+  expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+    responsibilities: 'Coordina pagos',
+    allowed_actions: ['PAYMENT_REQUEST'],
+  });
+});

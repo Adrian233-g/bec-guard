@@ -78,7 +78,7 @@ Ejemplo ilustrativo (50% de 80 + 50% de 90 = 85):
   "recommended_action": "Confirmar por un canal independiente conocido.",
   "provider": "openai",
   "model": "<CONFIGURED_MODEL>",
-  "policy_version": "det-v2/semantic-v1/hybrid-v1",
+  "policy_version": "det-v3/semantic-v2/hybrid-v2",
   "error_code": null,
   "analyzed_at": "2026-10-21T05:00:00Z"
 }
@@ -105,20 +105,20 @@ del score ilustrativo. El backend devuelve la lista completa calculada.
 La clasificación final desde 40 prefiere el patrón observado por reglas/contexto
 y después el sugerido por semántica; puede ser null si ninguno identifica tipo.
 OTHER no significa legítimo. La ponderación, floor y precedencia exacta de tipos
-locales están en [política BEC](bec-analysis.md#scoring-híbrido-hybrid-v1).
+locales están en [política BEC](bec-analysis.md#scoring-híbrido-hybrid-v2).
 
 ## Fallo semántico
 
 Cuando el proveedor falla, responde HTTP 200 con status FALLBACK, error_code
 sanitizado, semantic_score null y risk_score igual al puntaje de reglas. Se conserva
-la política `det-v2/fallback-v1`. Se crea alerta si el puntaje alcanza 50. Un
+la política `det-v3/fallback-v1`. Se crea alerta si el puntaje alcanza 50. Un
 puntaje bajo no descarta fraude: el análisis semántico no se realizó. No hay
 reintentos automáticos ni reanálisis de FALLBACK; repetir POST devuelve el mismo
 resultado. ERROR históricos aún se pueden reintentar con el mismo UUID.
 
 Un fallo de persistencia/auditoría devuelve el 503 genérico `Database unavailable`
 y revierte el intento. Ese error de infraestructura no tiene el contrato de un
-un análisis persistido. Las respuestas no incluyen raw output, prompt ni
+análisis persistido. Las respuestas no incluyen raw output, prompt ni
 detalles internos del proveedor.
 
 ## GET /api/emails/{email_id}/analysis

@@ -291,3 +291,19 @@ def test_google_sdk_response_boundary_without_network(
     assert config.response_json_schema == SemanticAssessment.model_json_schema()
     assert not config.tools
     assert "offline-test-key" not in caplog.text
+
+
+def test_semantic_context_includes_only_matched_role_without_bank_reference(semantic_input):
+    from app.services.semantic_analysis import build_messages
+
+    email, _, context = semantic_input
+    context.executives[0].responsibilities = "Autoriza pagos; ref PRIVATE-BANK-REFERENCE"
+    context.executives[0].allowed_actions = ["PAYMENT_REQUEST"]
+    email.sender_name, email.sender_email = "Ana Pérez", "other@outside.example"
+    messages = build_messages(email, assess_deterministically(email, context), context)
+    data = json.loads(messages[1].content.split("\n")[1])
+    [role] = data["context_facts"]["matched_roles"]
+    assert role["allowed_actions"] == ["PAYMENT_REQUEST"]
+    assert role["registered_sender"] is False
+    assert "PRIVATE-BANK-REFERENCE" not in messages[1].content
+    assert "[KNOWN_BANK_REFERENCE_REDACTED]" in role["responsibilities"]

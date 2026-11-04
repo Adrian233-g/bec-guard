@@ -13,7 +13,7 @@ from app.schemas.analysis import DeterministicAssessment, Signal
 from app.schemas.email import EmailIngestRequest
 from app.services.domain_similarity import is_domain_lookalike
 
-DETERMINISTIC_POLICY_VERSION = "det-v2"
+DETERMINISTIC_POLICY_VERSION = "det-v3"
 
 
 @dataclass
@@ -62,47 +62,69 @@ def assess_deterministically(
     sender = email.sender_email.lower()
     host = domain(sender)
     display = normalize_text(email.sender_name or "")
-    known_domains = {domain(e.email) for e in context.executives} | {
-        v.domain.lower() for v in context.vendors
-    }
-    legitimate_executive = any(sender == e.email.lower() for e in context.executives)
-    legitimate_vendor = any(
-        host == v.domain.lower() or sender == (v.contact_email or "").lower()
-        for v in context.vendors
+    text = normalize_text(email.subject + "\n" + email.body_text)
+    # Only explicit identity claims are used; a quoted name anywhere in a thread
+    # must not by itself identify its sender.
+    clauses_for_claim = re.split(r"[.!?\n]", email.subject + "\n" + email.body_text)
+    claims = " ".join(
+        match.group(1)
+        for clause in clauses_for_claim
+        if (
+            match := re.match(r"\s*(?:soy|habla|i am|this is)\s+(.{1,100})", normalize_text(clause))
+        )
     )
-    if not legitimate_executive:
-        for executive in context.executives:
-            official = domain(executive.email)
-            if name_matches(display, normalize_text(executive.name)):
-                add(
-                    "EXECUTIVE_IDENTITY_MISMATCH",
-                    "Nombre ejecutivo conocido con dirección no oficial.",
-                    35 if host not in known_domains else 15,
-                    "CONTEXT",
-                )
-            if is_domain_lookalike(host, official):
-                add(
-                    "EXECUTIVE_DOMAIN_LOOKALIKE",
-                    "Dominio similar al de un ejecutivo conocido.",
-                    25,
-                    "CONTEXT",
-                )
-    if not legitimate_vendor:
-        for vendor in context.vendors:
-            if name_matches(display, normalize_text(vendor.name), min_tokens=1):
+    matched = []
+    mismatch = False
+    for executive in context.executives:
+        known = normalize_text(executive.name)
+        identified = name_matches(display, known) or name_matches(claims, known)
+        if sender == executive.email.lower():
+            matched.append(executive)
+        elif identified:
+            matched.append(executive)
+            mismatch = True
+            add(
+                "EXECUTIVE_IDENTITY_MISMATCH",
+                "Nombre de ejecutivo registrado con dirección distinta a la registrada.",
+                35,
+                "CONTEXT",
+            )
+        if sender != executive.email.lower() and is_domain_lookalike(host, domain(executive.email)):
+            mismatch = True
+            add(
+                "EXECUTIVE_DOMAIN_LOOKALIKE",
+                "Dominio similar al de un ejecutivo conocido.",
+                25,
+                "CONTEXT",
+            )
+
+    for vendor in context.vendors:
+        identified = (
+            host == vendor.domain.lower()
+            or name_matches(display, normalize_text(vendor.name), min_tokens=1)
+            or name_matches(claims, normalize_text(vendor.name), min_tokens=1)
+        )
+        contact = vendor.contact_email.lower() if vendor.contact_email else None
+        if identified:
+            matched.append(vendor)
+            if (contact and sender != contact) or (not contact and host != vendor.domain.lower()):
+                mismatch = True
                 add(
                     "VENDOR_IDENTITY_MISMATCH",
-                    "Nombre de proveedor conocido con dominio/contacto distinto.",
+                    "Proveedor o dominio registrado con dirección distinta al contacto registrado.",
                     30,
                     "CONTEXT",
                 )
-            if is_domain_lookalike(host, vendor.domain):
-                add(
-                    "VENDOR_DOMAIN_LOOKALIKE",
-                    "Dominio similar al de un proveedor conocido.",
-                    25,
-                    "CONTEXT",
-                )
+        elif sender == contact or (not contact and host == vendor.domain.lower()):
+            matched.append(vendor)
+        if sender != contact and is_domain_lookalike(host, vendor.domain):
+            mismatch = True
+            add(
+                "VENDOR_DOMAIN_LOOKALIKE",
+                "Dominio similar al de un proveedor conocido.",
+                25,
+                "CONTEXT",
+            )
 
     if email.reply_to and email.reply_to.lower() != sender:
         cross_domain = domain(email.reply_to) != host
@@ -129,7 +151,6 @@ def assess_deterministically(
                 weight,
             )
 
-    text = normalize_text(email.subject + "\n" + email.body_text)
     # Inspect clauses so negated instructions do not create a payment/data request.
     clauses = re.split(
         r"[.!?;\n]", normalize_text(email.subject) + "\n" + normalize_text(email.body_text)
@@ -215,6 +236,47 @@ def assess_deterministically(
     if bypass or bypass_approval:
         add(
             "SECRECY_REQUEST", "Se pide evitar registro, consulta o verificación independiente.", 12
+        )
+
+    requested = {
+        name
+        for name, detected in (
+            ("PAYMENT_REQUEST", payment),
+            ("BANK_ACCOUNT_CHANGE", bank),
+            ("SENSITIVE_DATA_REQUEST", sensitive),
+        )
+        if detected
+    }
+    # None means the organization has not configured a scope. An empty list is
+    # an explicitly configured scope with no sensitive request categories.
+    if requested and any(
+        item.allowed_actions is not None and not requested.issubset(item.allowed_actions)
+        for item in matched
+    ):
+        add(
+            "REQUEST_OUTSIDE_ROLE",
+            "Solicitud fuera de las categorías registradas para el contacto.",
+            18,
+            "CONTEXT",
+        )
+    # An explicit impersonation plus any recognized request is at least an alert;
+    # sensitive requests escalate to HIGH even if the semantic model disagrees.
+    general_request = bool(
+        re.search(
+            r"\b(?:solicito|solicita|necesito|necesitamos|puedes|podrias|envia|enviar|"
+            r"confirma|confirmar|revisa|revisar|gestiona|tramita|prepara|agradeceria|"
+            r"te pido|me ayudas|request|please|could you|can you|send)\b",
+            positive,
+        )
+    )
+    if mismatch and (actionable or general_request):
+        target = 70 if actionable else 50
+        code = "IMPERSONATION_SENSITIVE_REQUEST" if actionable else "IMPERSONATION_REQUEST"
+        add(
+            code,
+            "Identidad o dominio asociado a un contacto con una solicitud desde otra dirección.",
+            max(0, target - sum(signal.contribution for signal in signals)),
+            "CONTEXT",
         )
 
     codes = {s.code for s in signals}

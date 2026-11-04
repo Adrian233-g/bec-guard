@@ -74,8 +74,24 @@ def record_security_event(
 
 
 CONTEXT_FIELDS = {
-    "executive": {"name", "position", "department", "email", "is_active"},
-    "vendor": {"name", "domain", "contact_email", "bank_account_reference", "is_active"},
+    "executive": {
+        "name",
+        "position",
+        "department",
+        "email",
+        "is_active",
+        "responsibilities",
+        "allowed_actions",
+    },
+    "vendor": {
+        "name",
+        "domain",
+        "contact_email",
+        "bank_account_reference",
+        "is_active",
+        "responsibilities",
+        "allowed_actions",
+    },
 }
 
 

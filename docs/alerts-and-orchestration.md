@@ -25,7 +25,7 @@ sin un filtro que lo consuma. PK y UNIQUE analysis_id cubren identidad e idempot
 
 `ALERT_POLICY_VERSION = "alert-v2"`: COMPLETED y FALLBACK con risk_score >=50
 generan alerta, incluso en MEDIUM (50–69). ERROR histórico no genera alerta.
-La combinación híbrida sigue en det-v2 / semantic-v1 / hybrid-v1.
+La combinación híbrida sigue en det-v3 / semantic-v2 / hybrid-v2.
 
 `ensure_alert_for_analysis` participa en la transacción del caller y serializa por
 EmailAnalysis. Reutiliza la alerta existente o crea una y BEC_ALERT_CREATED, sin

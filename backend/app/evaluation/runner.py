@@ -49,7 +49,9 @@ def evaluate(
         if metadata.mode == "hybrid":
             try:
                 semantic = analyzer_factory().assess(case.email, det, context)
-                score = combine_scores(det.score, semantic.risk_score)
+                score = combine_scores(
+                    det.score, semantic.risk_score, signal_codes={s.code for s in det.signals}
+                )
                 kind = resolve_bec_type(score, det, semantic)
             except ValidationError:
                 score = kind = None

@@ -1,8 +1,15 @@
 from datetime import datetime
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from app.core.context_validation import normalize_domain
 from app.core.identity import validate_identity_email
@@ -34,6 +41,11 @@ BankReference = Annotated[
     str | None, StringConstraints(max_length=256), BeforeValidator(optional_text)
 ]
 OptionalEmail = Annotated[Email | None, BeforeValidator(optional_text)]
+Responsibilities = Annotated[
+    str | None, StringConstraints(max_length=2000), BeforeValidator(optional_text)
+]
+Action = Literal["PAYMENT_REQUEST", "BANK_ACCOUNT_CHANGE", "SENSITIVE_DATA_REQUEST"]
+AllowedActions = Annotated[list[Action] | None, Field(max_length=3)]
 
 
 class ContextInput(BaseModel):
@@ -41,6 +53,8 @@ class ContextInput(BaseModel):
 
 
 class ExecutiveContactCreate(ContextInput):
+    responsibilities: Responsibilities = None
+    allowed_actions: AllowedActions = None
     name: Name
     position: Name
     department: Department = None
@@ -49,6 +63,8 @@ class ExecutiveContactCreate(ContextInput):
 
 
 class VendorCreate(ContextInput):
+    responsibilities: Responsibilities = None
+    allowed_actions: AllowedActions = None
     name: Name
     domain: Domain
     contact_email: OptionalEmail = None
@@ -68,6 +84,8 @@ class ContextUpdate(ContextInput):
 
 
 class ExecutiveContactUpdate(ContextUpdate):
+    responsibilities: Responsibilities = None
+    allowed_actions: AllowedActions = None
     name: Name | None = None
     position: Name | None = None
     department: Department = None
@@ -76,6 +94,8 @@ class ExecutiveContactUpdate(ContextUpdate):
 
 
 class VendorUpdate(ContextUpdate):
+    responsibilities: Responsibilities = None
+    allowed_actions: AllowedActions = None
     name: Name | None = None
     domain: Domain | None = None
     contact_email: OptionalEmail = None
@@ -85,6 +105,9 @@ class VendorUpdate(ContextUpdate):
 
 class ContextResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+    responsibilities: Responsibilities = None
+    allowed_actions: AllowedActions = None
 
     id: UUID
     name: str

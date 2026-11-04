@@ -1,7 +1,8 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Index, String, Uuid, func, true
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, String, Text, Uuid, func, true
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.core.identity import validate_identity_email
@@ -16,6 +17,8 @@ class ExecutiveContact(Base):
     position: Mapped[str] = mapped_column(String(200), nullable=False)
     department: Mapped[str | None] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(320), nullable=False)
+    responsibilities: Mapped[str | None] = mapped_column(Text)
+    allowed_actions: Mapped[list[str] | None] = mapped_column(JSONB(none_as_null=True))
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -24,7 +27,18 @@ class ExecutiveContact(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (Index("uq_executive_contacts_email_lower", func.lower(email), unique=True),)
+    __table_args__ = (
+        Index("uq_executive_contacts_email_lower", func.lower(email), unique=True),
+        CheckConstraint(
+            "responsibilities IS NULL OR length(responsibilities) <= 2000", name="responsibilities"
+        ),
+        CheckConstraint(
+            "allowed_actions IS NULL OR (jsonb_typeof(allowed_actions) = 'array' AND "
+            'allowed_actions <@ \'["PAYMENT_REQUEST", "BANK_ACCOUNT_CHANGE", '
+            '"SENSITIVE_DATA_REQUEST"]\'::jsonb)',
+            name="allowed_actions",
+        ),
+    )
 
     @validates("email")
     def normalize_email(self, _key: str, value: str) -> str:

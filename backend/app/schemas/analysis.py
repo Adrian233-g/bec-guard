@@ -24,7 +24,7 @@ class DeterministicAssessment(BaseModel):
     score: Score
     signals: list[Signal]
     bec_type: BECType | None
-    policy_version: str = "det-v2"
+    policy_version: str = "det-v3"
 
 
 class SemanticSignal(BaseModel):

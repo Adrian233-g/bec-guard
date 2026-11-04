@@ -307,3 +307,13 @@ proteger su cuota de Groq.
 - [x] Evitar que un analista que pierde el rol siga viendo avisos de alertas de
       buzones ajenos. Las alertas permanecen visibles hasta cerrarlas o abrirlas;
       los avisos de correo se cierran después de ocho segundos.
+
+### Organización y suplantación
+
+- [x] Registrar un contexto ficticio BEC Guard con ejecutivos, proveedores,
+      funciones y categorías de solicitud configurables y auditadas.
+- [x] Escalar identidad discrepante con solicitud: mínimo 50 para una solicitud
+      reconocida y 70 para pago, cambio bancario o datos sensibles. Señalar
+      categorías fuera del ámbito configurado sin asumir permisos cuando falta.
+- [ ] Evaluar con más casos reales o simulados y contexto actualizado: las reglas
+      son heurísticas, no verifican la autenticidad del remitente por sí solas.
