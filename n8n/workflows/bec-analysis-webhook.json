@@ -214,7 +214,7 @@
                 "conditions": [
                   {
                     "id": "condition",
-                    "leftValue": "={{ $json.statusCode === 200 && ['COMPLETED', 'FALLBACK'].includes($json.body?.analysis?.status) && ['HIGH', 'CRITICAL'].includes($json.body.analysis.risk_level) && !!$json.body.alert_id }}",
+                    "leftValue": "={{ $json.statusCode === 200 && ['COMPLETED', 'FALLBACK'].includes($json.body?.analysis?.status) && Number.isInteger($json.body.analysis.risk_score) && $json.body.analysis.risk_score >= 50 && $json.body.analysis.risk_score <= 100 && !!$json.body.alert_id }}",
                     "rightValue": true,
                     "operator": {
                       "type": "boolean",
@@ -239,7 +239,7 @@
                 "conditions": [
                   {
                     "id": "condition",
-                    "leftValue": "={{ $json.statusCode === 200 && ['COMPLETED', 'FALLBACK'].includes($json.body?.analysis?.status) && ['LOW', 'MEDIUM'].includes($json.body.analysis.risk_level) && $json.body.alert_id === null }}",
+                    "leftValue": "={{ $json.statusCode === 200 && ['COMPLETED', 'FALLBACK'].includes($json.body?.analysis?.status) && Number.isInteger($json.body.analysis.risk_score) && $json.body.analysis.risk_score >= 0 && $json.body.analysis.risk_score < 50 && $json.body.alert_id === null }}",
                     "rightValue": true,
                     "operator": {
                       "type": "boolean",

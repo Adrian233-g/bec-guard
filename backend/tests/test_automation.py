@@ -141,7 +141,7 @@ def test_automation_high_alert_idempotence_and_audit(
     assert all(e.actor_user_id is e.actor_role is e.details is None for e in events)
 
 
-@pytest.mark.parametrize("semantic_score,level", [(0, "LOW"), (100, "MEDIUM")])
+@pytest.mark.parametrize("semantic_score,level", [(0, "LOW"), (98, "MEDIUM")])
 def test_automation_low_medium_have_no_alert(
     api_client, automation_setup, db_session, analysis_stub, semantic_score, level
 ):
@@ -184,7 +184,7 @@ def test_automation_rules_fallback_is_idempotent(
     assert analysis["status"] == "FALLBACK" and analysis["error_code"] == code
     assert analysis["risk_score"] == analysis["deterministic_score"]
     assert analysis["semantic_score"] is None
-    assert bool(result["alert_id"]) == (analysis["risk_score"] >= 70)
+    assert bool(result["alert_id"]) == (analysis["risk_score"] >= 50)
     analysis_stub.failure = None
     assert api_client.post(path, headers=headers).json() == result
     assert analysis_stub.calls == 1

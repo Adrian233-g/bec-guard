@@ -57,7 +57,7 @@ el backend no refleja valores del request; 409 informa conflicto y refresca aler
 
 ## Riesgo medio y errores de análisis
 
-La política no cambia: solo un análisis COMPLETED con puntaje >=70 genera alerta.
+La política no cambia: un análisis COMPLETED o FALLBACK con puntaje >=50 genera alerta.
 La vista de análisis muestra el nivel y, cuando el puntaje queda por debajo del
 umbral, una nota explícita indica que no hubo alerta automática. Para MEDIUM
 (40–69) añade que conviene revisar las señales antes de descartar el correo; el

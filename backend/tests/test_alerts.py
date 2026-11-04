@@ -19,7 +19,10 @@ pytestmark = pytest.mark.integration
         (0, "COMPLETED", False),
         (39, "COMPLETED", False),
         (40, "COMPLETED", False),
-        (69, "COMPLETED", False),
+        (49, "COMPLETED", False),
+        (50, "COMPLETED", True),
+        (55, "COMPLETED", True),
+        (69, "COMPLETED", True),
         (70, "COMPLETED", True),
         (84, "COMPLETED", True),
         (85, "COMPLETED", True),
@@ -53,7 +56,7 @@ def test_alert_policy_and_idempotence(db_session, account, alert_setup, score, s
 
 def test_completed_from_phase5_recovers_alert_without_llm(api_client, alert_setup, analysis_stub):
     email, assessment, headers = alert_setup
-    old = assessment(85)
+    old = assessment(55)
     first = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
     assert first.status_code == 200 and first.json()["id"] == str(old.id)
     rows = api_client.get("/api/alerts", headers=headers).json()

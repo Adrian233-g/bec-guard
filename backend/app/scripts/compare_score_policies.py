@@ -29,12 +29,15 @@ def compare(cases, context, semantic_scores=(20, 50, 80)):
     ]
     results = {}
     for semantic in semantic_scores:
-        counts = {name: Counter() for name in ("current", "threshold_50", "weight_30_70", "both")}
+        counts = {
+            name: Counter()
+            for name in ("baseline_50_50_70", "threshold_50", "weight_30_70", "both")
+        }
         for label, det in development:
             current = combine_scores(det, semantic)
             candidate = candidate_score(det, semantic)
             for name, alert in (
-                ("current", current >= 70),
+                ("baseline_50_50_70", current >= 70),
                 ("threshold_50", current >= 50),
                 ("weight_30_70", candidate >= 70),
                 ("both", candidate >= 50),

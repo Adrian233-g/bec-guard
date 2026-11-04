@@ -44,9 +44,9 @@ def metadata(mode="deterministic"):
             "deterministic": "det-v1",
             "semantic": "semantic-v1",
             "hybrid": "hybrid-v1",
-            "alert": "alert-v1",
+            "alert": "alert-v2",
         },
-        thresholds={"detection": 40, "alert": 70},
+        thresholds={"detection": 40, "alert": 50},
         detector_sha256={},
     )
 
@@ -110,7 +110,7 @@ def test_metrics_formulas_and_zero_division():
 
 @pytest.mark.parametrize(
     "score,detect,alert",
-    [(39, False, False), (40, True, False), (69, True, False), (70, True, True)],
+    [(39, False, False), (40, True, False), (49, True, False), (50, True, True), (69, True, True)],
 )
 def test_thresholds(score, detect, alert):
     result = evaluate(

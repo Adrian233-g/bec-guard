@@ -8,7 +8,7 @@ solo orquesta correo normalizado → ingestión → análisis → respuesta. No 
 workers nuevos, proveedor de correo ni notificaciones externas. Fase 7 añade
 frontend, HITL y avisos in-app.
 
-## BECAlert y alert-v1
+## BECAlert y alert-v2
 
 La revisión nueva `0007_bec_alerts`, dependiente de `0006_email_analysis`, crea
 `public.bec_alerts`. No modifica 0001–0006 ni el esquema n8n. Campos: id UUID,
@@ -23,10 +23,9 @@ No hay DELETE ni reopen.
 El índice created_at DESC + id sirve al listado real; no se añade índice por status
 sin un filtro que lo consuma. PK y UNIQUE analysis_id cubren identidad e idempotencia.
 
-`ALERT_POLICY_VERSION = "alert-v1"`: únicamente COMPLETED con risk_score >=70
-genera alerta. COMPLETED y FALLBACK HIGH/CRITICAL sí, LOW/MEDIUM no, ERROR histórico no aunque deterministic_score
-sea 100. La política actual es det-v2 / semantic-v1 / hybrid-v1; el umbral
-y la combinación permanecen sin cambios.
+`ALERT_POLICY_VERSION = "alert-v2"`: COMPLETED y FALLBACK con risk_score >=50
+generan alerta, incluso en MEDIUM (50–69). ERROR histórico no genera alerta.
+La combinación híbrida sigue en det-v2 / semantic-v1 / hybrid-v1.
 
 `ensure_alert_for_analysis` participa en la transacción del caller y serializa por
 EmailAnalysis. Reutiliza la alerta existente o crea una y BEC_ALERT_CREATED, sin
@@ -34,7 +33,7 @@ commit independiente. analyze_email mantiene su bloqueo por Email y llama al
 helper también cuando encuentra un COMPLETED antiguo: recupera alertas faltantes
 de Fase 5 sin volver a llamar al LLM. No hay backfill en Alembic.
 
-Para un nuevo HIGH/CRITICAL, EmailAnalysis + BECAlert + EMAIL_ANALYZED +
+Para un nuevo resultado con score >=50, EmailAnalysis + BECAlert + EMAIL_ANALYZED +
 BEC_ALERT_CREATED comparten commit. Si falla inserción/auditoría, se revierte el
 intento. En recuperación de un COMPLETED antiguo se conserva ese análisis y se
 revierte solo el intento de alerta. UNIQUE analysis_id protege además PostgreSQL.
@@ -89,7 +88,7 @@ POST /api/automation/emails/{email_id}/analyze reutiliza analyze_email. Devuelve
 {"analysis": "<EmailAnalysisResponse object>", "alert_id": null}
 ```
 
-200 COMPLETED o FALLBACK; HIGH/CRITICAL tienen UUID alert_id, LOW/MEDIUM null.
+200 COMPLETED o FALLBACK; score >=50 tiene UUID alert_id; por debajo, null.
 FALLBACK conserva el código del fallo semántico y usa solo reglas; un puntaje bajo
 no descarta fraude. Ambos estados se reutilizan sin reintentos automáticos. Los
 ERROR históricos permiten retry. Los fallos de persistencia/auditoría usan 503
@@ -123,8 +122,8 @@ importador lee BEC_GUARD_BACKEND_URL/AUTOMATION_API_KEY desde el entorno, fija l
 URL en Configuration y crea una credencial Header Auth. No se habilita acceso al
 entorno desde nodos. El JSON guarda referencias a credencial, nunca su valor.
 
-ERROR se evalúa primero; ALERT exige COMPLETED o FALLBACK + HIGH/CRITICAL + alert_id;
-NO_ALERT exige COMPLETED o FALLBACK + LOW/MEDIUM + alert_id null. Una respuesta inesperada,
+ERROR se evalúa primero; ALERT exige COMPLETED o FALLBACK + score >=50 + alert_id;
+NO_ALERT exige COMPLETED o FALLBACK + score <50 + alert_id null. Una respuesta inesperada,
 fallo de transporte o resultado inconsistente va a ERROR. No contiene lógica BEC,
 regex, comparación de dominios, thresholds de scoring ni política de creación.
 

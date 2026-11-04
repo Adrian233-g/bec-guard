@@ -11,8 +11,8 @@ from app.schemas.alerts import AlertResolveRequest
 from app.services.audit import AuditAction, record_alert_created, record_alert_review
 from app.services.notifications import create_alert_notifications
 
-ALERT_POLICY_VERSION = "alert-v1"
-ALERT_THRESHOLD = 70
+ALERT_POLICY_VERSION = "alert-v2"
+ALERT_THRESHOLD = 50
 
 
 def ensure_alert_for_analysis(

@@ -3,7 +3,7 @@ import { Badge, EmptyState, date, label } from './components';
 import { IconExternalLink } from './icons';
 import type { Analysis, EmailDetail } from './types';
 
-export const ALERT_THRESHOLD = 70;
+export const ALERT_THRESHOLD = 50;
 
 const signalTitles: Record<string, string> = {
   EXECUTIVE_IDENTITY_MISMATCH: 'Dirección de ejecutivo no reconocida',

@@ -33,6 +33,7 @@ function setup(
       | 'error'
       | 'completed'
       | 'medium'
+      | 'medium-alert'
       | 'rate-limited'
       | 'fallback';
     auditError?: boolean;
@@ -49,32 +50,34 @@ function setup(
         }
       : options.analysis === 'completed'
         ? alert.analysis
-        : options.analysis === 'medium'
-          ? {
-              ...alert.analysis,
-              deterministic_score: 0,
-              semantic_score: 55,
-              risk_score: 55,
-              risk_level: 'MEDIUM',
-              bec_type: null,
-            }
-          : options.analysis === 'rate-limited'
+        : options.analysis === 'medium-alert'
+          ? { ...alert.analysis, risk_score: 55, risk_level: 'MEDIUM' }
+          : options.analysis === 'medium'
             ? {
                 ...alert.analysis,
-                status: 'ERROR',
-                risk_score: null,
-                risk_level: null,
-                error_code: 'LLM_RATE_LIMITED',
+                deterministic_score: 0,
+                semantic_score: 45,
+                risk_score: 45,
+                risk_level: 'MEDIUM',
+                bec_type: null,
               }
-            : options.analysis === 'error'
+            : options.analysis === 'rate-limited'
               ? {
                   ...alert.analysis,
                   status: 'ERROR',
                   risk_score: null,
                   risk_level: null,
-                  error_code: 'LLM_TIMEOUT',
+                  error_code: 'LLM_RATE_LIMITED',
                 }
-              : null;
+              : options.analysis === 'error'
+                ? {
+                    ...alert.analysis,
+                    status: 'ERROR',
+                    risk_score: null,
+                    risk_level: null,
+                    error_code: 'LLM_TIMEOUT',
+                  }
+                : null;
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/auth/me')) return response({ ...user, role });
     if (url.includes('/audit?'))
@@ -165,8 +168,8 @@ it('retry ERROR updates the persisted analysis', async () => {
 });
 it('does not create an alert for MEDIUM risk and explains the threshold', async () => {
   const fetch = setup('/emails/email-1', 'ANALYST', { analysis: 'medium' });
-  await screen.findByText(/Riesgo medio \(55\/100\)/);
-  expect(screen.getByText(/no alcanza el umbral de 70/)).toBeInTheDocument();
+  await screen.findByText(/Riesgo medio \(45\/100\)/);
+  expect(screen.getByText(/no alcanza el umbral de 50/)).toBeInTheDocument();
   expect(
     screen.queryByRole('link', { name: 'Abrir alerta asociada' }),
   ).not.toBeInTheDocument();
@@ -389,4 +392,11 @@ it('shows rules-only fallback without inventing a semantic score', async () => {
   ).toBeInTheDocument();
   expect(screen.getAllByText('No disponible').length).toBeGreaterThan(0);
   expect(screen.getByText('LLM_RATE_LIMITED')).toBeInTheDocument();
+});
+
+it('shows the associated alert for medium risk at 55', async () => {
+  setup('/emails/email-1', 'ANALYST', { analysis: 'medium-alert' });
+  expect(
+    await screen.findByRole('link', { name: 'Abrir alerta asociada' }),
+  ).toBeInTheDocument();
 });

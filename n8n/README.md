@@ -66,8 +66,8 @@ dataset. El endpoint del editor `/webhook-test/` solo sirve mientras está escuc
 
 ## Respuestas y reintentos
 
-ALERT exige COMPLETED o FALLBACK, HIGH/CRITICAL y alert_id; NO_ALERT exige COMPLETED o FALLBACK,
-LOW/MEDIUM y alert_id null. ERROR se evalúa primero; también es el fallback para
+ALERT exige COMPLETED o FALLBACK, score >=50 y alert_id; NO_ALERT exige COMPLETED o FALLBACK,
+score <50 y alert_id null. ERROR se evalúa primero; también es el fallback para
 errores de transporte, respuestas inesperadas o inconsistentes. Nunca se enruta
 un fallo a NO_ALERT. Las respuestas exitosas incluyen IDs, status, score, nivel,
 tipo, summary y recommended_action. No incluyen body, sender, subject, secretos,
@@ -82,7 +82,7 @@ Webhook: un header ausente/incorrecto recibe 401 de n8n antes de ejecutar.
 
 Repetir el Message-ID exacto recupera el Email sin sobrescribirlo ni otra auditoría
 EMAIL_INGESTED. COMPLETED y FALLBACK se reutilizan; ERROR histórico permite retry explícito sobre el mismo
-análisis. La creación de BECAlert y su política >=70 pertenecen a FastAPI.
+análisis. La creación de BECAlert y su política >=50 pertenecen a FastAPI.
 
 ## Historial de ejecuciones
 
@@ -179,14 +179,12 @@ correos recibidos con Docker apagado. La API key y las contraseñas no deben
 aparecer en el historial del workflow, pero los propios correos sí pueden quedar
 en las ejecuciones y deben protegerse de otros usuarios.
 
-### Actualizar receptores ya existentes para el respaldo
+### Actualizar receptores ya existentes
 
-El JSON versionado actualizado se usa para crear nuevos receptores, pero cambiarlo
-no modifica los workflows ya importados en n8n. Para cada workflow existente,
-editar el nodo **Route result**: en las condiciones de ALERT y NO_ALERT sustituir
-la comparación del estado `=== 'COMPLETED'` por
-`['COMPLETED', 'FALLBACK'].includes($json.body?.analysis?.status)`. Conservar las
-comprobaciones de nivel y alert_id tal como están y publicar el workflow. La rama
-ERROR sigue atendiendo respuestas inesperadas. No hace falta desconectar Gmail ni
-cambiar las credenciales. Hasta actualizarlo, FastAPI sí guarda el respaldo y crea
-la alerta que corresponda, pero el workflow antiguo enrutará FALLBACK como ERROR.
+El JSON versionado se usa para crear nuevos receptores; no modifica los workflows
+ya importados. En cada workflow existente se deben actualizar las condiciones
+ALERT y NO_ALERT del nodo **Route result** con las expresiones del JSON canónico
+y publicar el workflow. Las expresiones admiten COMPLETED y FALLBACK y comprueban
+el puntaje frente a 50 junto con la presencia o ausencia de alert_id. No se deben
+alterar las credenciales ni los demás nodos. Hasta actualizarlo, el backend puede
+crear una alerta con score 50–69, pero el workflow antiguo la enrutará como ERROR.

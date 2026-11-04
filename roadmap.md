@@ -48,8 +48,8 @@ correo ni instalación de una aplicación por empleado.
 - La configuración y validación de permisos no debe depender de ocultar botones.
   La automatización debe identificar el buzón de forma verificable y no permitir
   que un cliente elija arbitrariamente el propietario de un correo.
-- La política actual crea alertas con score >=70; no se ha aprobado cambiar el
-  umbral. La UI explica que MEDIUM (40–69) no genera alerta automática y que el
+- La política actual crea alertas con score >=50. MEDIUM 50–69 genera alerta;
+  MEDIUM 40–49 no. La UI explica el umbral y que el
   correo queda para revisión manual; falta validar la regla con más datos.
 - Se mantiene la preferencia de **no procesar correos que llegaron mientras el
   workflow estaba apagado**: al iniciar cada receptor se toma un punto de partida
@@ -293,3 +293,8 @@ proteger su cuota de Groq.
       semánticos reales con consumo autorizado antes de decidir la política.
 - [x] Implementar respaldo FALLBACK por reglas ante fallo de IA, con señales,
       código sanitizado y alerta desde 70; no reintenta el proveedor al repetir POST.
+
+### Umbral de alerta
+
+- [x] Activar alerta desde 50 por decisión del usuario, mantener pesos 50/50 y
+      niveles de riesgo; adaptar interfaz y enrutamiento de n8n.

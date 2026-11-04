@@ -6,7 +6,7 @@
 El backend analiza un Email persistido y conserva un EmailAnalysis actual. Es un
 monolito síncrono: reglas + contexto activo → semántica LangChain → scoring híbrido
 → resultado y auditoría en un commit. Fase 6 añade BECAlert OPEN para COMPLETED
->=70 en esa misma transacción, sin ejecutar recomendaciones.
+>=50 en esa misma transacción, sin ejecutar recomendaciones.
 
 ## Motor determinista (`det-v2`)
 
@@ -126,7 +126,7 @@ Referencias de integración: [ChatOpenAI](https://docs.langchain.com/oss/python/
 half-up: `(deterministic_score + semantic_score + 1) // 2`. Única salvaguarda:
 si el determinista es >=70, el resultado final tiene floor 70. Un LLM contradictorio
 no borra evidencia local fuerte. La salvaguarda es asimétrica: reglas=0 e IA=100
-producen 50 y no generan alerta con el umbral actual. No hay entrenamiento ni
+producen 50 y generan alerta con el umbral actual. No hay entrenamiento ni
 calibración estadística que demuestre que esa combinación es óptima.
 
 | Score | RiskLevel |
@@ -136,10 +136,8 @@ calibración estadística que demuestre que esa combinación es óptima.
 | 70–84 | HIGH |
 | 85–100 | CRITICAL |
 
-Solo HIGH y CRITICAL (score >=70) crean BECAlert. MEDIUM (40–69) no genera
-alerta automática: la UI lo indica y deja el correo para revisión manual. Cambiar
-ese umbral requiere evidencia y una decisión explícita; la política vigente no lo
-modifica.
+El umbral de alerta es **50**: MEDIUM 50–69, HIGH y CRITICAL generan alerta.
+MEDIUM 40–49 no genera alerta automática. Los niveles no cambian.
 
 El motor determinista sugiere un tipo, en este orden cuando coexisten señales:
 BANK_ACCOUNT_CHANGE, SENSITIVE_DATA_REQUEST, EXECUTIVE_IMPERSONATION, VENDOR_FRAUD.
@@ -182,7 +180,7 @@ Un fallo de auditoría revierte tanto creación como retry, conservando un ERROR
 anterior cuando existe. Errores de persistencia responden 503 genérico.
 El trigger append-only histórico permanece intacto.
 
-BEC_ALERT_CREATED se registra en la misma transacción para COMPLETED o FALLBACK >=70.
+BEC_ALERT_CREATED se registra en la misma transacción para COMPLETED o FALLBACK >=50.
 Las llamadas de automatización reutilizan este servicio con actor null y una API
 key acotada, sin sustituir RBAC/JWT humano. Ver [alertas y orquestación](alerts-and-orchestration.md).
 
@@ -192,7 +190,7 @@ Si el proveedor falla, agota cuota, devuelve salida inválida o no está configu
 el servicio guarda FALLBACK y responde HTTP 200. El puntaje final es el de reglas,
 semantic_score queda null y error_code explica el fallo sanitizado. La interfaz
 indica que el resultado es limitado; una puntuación baja no descarta fraude. Se
-crea alerta con el umbral vigente >=70. No se reintenta automáticamente ni al
+crea alerta con el umbral vigente >=50. No se reintenta automáticamente ni al
 repetir POST; los análisis ERROR históricos sí pueden reintentarse. Los fallos de
 base de datos y auditoría responden 503 y revierten la transacción. Ver el
 [contrato](api-contracts.md).

@@ -24,7 +24,7 @@ pendientes; skills-lock.json preexistente permaneció sin seguimiento.
 | Context SHA-256 | `32e2e91b5827abf3ad84db43e4d99e7bfec903f4cc8b3b28cccb134ae75b69ff` |
 | Políticas | det-v1 / semantic-v1 / hybrid-v1 / alert-v1 |
 | Detección | score >=40 |
-| Alerta operativa | score >=70, importado de ALERT_THRESHOLD |
+| Umbral al congelar el baseline | score >=70; la política vigente usa >=50 |
 | Niveles vigentes | LOW 0–39, MEDIUM 40–69, HIGH 70–84, CRITICAL 85–100 |
 | Proveedor / modelo | null / null; baseline sin LLM |
 | Completados / errores / coverage | 42 / 0 / 100% |
@@ -151,7 +151,7 @@ Los reportes operativos PDF/XLSX solo leen PostgreSQL y nunca importan este tool
 ## Simulación de alternativas de puntaje (2026-11-04)
 
 `cd backend && .venv/bin/python -m app.scripts.compare_score_policies` compara la
-política actual (50/50, alerta >=70), bajar solo el umbral a 50, cambiar solo los
+política anterior (50/50, alerta >=70), bajar solo el umbral a 50, cambiar solo los
 pesos a 30/70, y aplicar ambas propuestas. Todas conservan el piso vigente de 70
 para reglas >=70. El script solo usa los 98 casos sintéticos de desarrollo, nunca
 procesa holdout ni llama a un proveedor. No modifica la política operativa.

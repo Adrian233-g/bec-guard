@@ -39,11 +39,11 @@ Fallo de BD: HTTP 503, sin detalles de conexión:
 Implementado en Fase 5. Bearer obligatorio; ADMIN/MANAGER/ANALYST pueden ejecutar,
 AUDITOR recibe 403. No recibe body: carga el Email persistido y contexto activo,
 aplica reglas, semántica LangChain y scoring híbrido, y guarda EmailAnalysis con
-auditoría atómica. Desde Fase 6, COMPLETED >=70 garantiza BECAlert OPEN/verdict null
+auditoría atómica. Desde Fase 6, COMPLETED o FALLBACK >=50 garantiza BECAlert OPEN/verdict null
 en la misma transacción. No ejecuta recomendaciones.
 
 HTTP 200: EmailAnalysisResponse COMPLETED o FALLBACK, creado o reutilizado. Si ya existe
-COMPLETED o FALLBACK no llama otra vez al proveedor. Si le falta alerta y score>=70, la crea
+COMPLETED o FALLBACK no llama otra vez al proveedor. Si le falta alerta y score>=50, la crea
 con BEC_ALERT_CREATED; si ya existe, no repite eventos. Si existe ERROR,
 recalcula y actualiza la misma fila/UUID. UNIQUE email_id y bloqueo de Email
 serializan solicitudes concurrentes; no hay historial de ejecuciones.
@@ -111,7 +111,7 @@ locales están en [política BEC](bec-analysis.md#scoring-híbrido-hybrid-v1).
 
 Cuando el proveedor falla, responde HTTP 200 con status FALLBACK, error_code
 sanitizado, semantic_score null y risk_score igual al puntaje de reglas. Se conserva
-la política `det-v2/fallback-v1`. Se crea alerta si el puntaje alcanza 70. Un
+la política `det-v2/fallback-v1`. Se crea alerta si el puntaje alcanza 50. Un
 puntaje bajo no descarta fraude: el análisis semántico no se realizó. No hay
 reintentos automáticos ni reanálisis de FALLBACK; repetir POST devuelve el mismo
 resultado. ERROR históricos aún se pueden reintentar con el mismo UUID.
@@ -157,7 +157,7 @@ El POST humano conserva 409. La carrera UNIQUE recupera el ganador persistido.
 
 Misma autenticación. Reutiliza analyze_email y devuelve
 `{analysis: EmailAnalysisResponse, alert_id: UUID|null}`. COMPLETED o FALLBACK
-HIGH/CRITICAL incluye alert_id; LOW/MEDIUM lo dejan null. Ambos devuelven HTTP 200
+score >=50 incluye alert_id; score menor lo deja null. Ambos devuelven HTTP 200
 y se reutilizan sin volver a llamar a la IA. Un ERROR histórico admite retry.
 
 La API key se carga lazy, SecretStr y compare_digest. Ausente/corta (<32) en
@@ -166,7 +166,7 @@ No autoriza ninguna otra ruta; JWT no sustituye esta key. Auditoría del pipelin
 automatizado usa actor_user_id/actor_role null, details null y recurso/acción/IP/
 timestamp. La auditoría humana conserva User y rol actual.
 
-Workflow, política alert-v1, transacciones y privacidad:
+Workflow, política alert-v2, transacciones y privacidad:
 [alertas y orquestación](alerts-and-orchestration.md).
 
 

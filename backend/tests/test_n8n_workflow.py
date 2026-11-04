@@ -46,8 +46,8 @@ def test_routing_is_fail_closed_and_response_excludes_email_content():
     assert [rule["outputKey"] for rule in rules] == ["ERROR", "ALERT", "NO_ALERT"]
     expressions = [r["conditions"]["conditions"][0]["leftValue"] for r in rules]
     assert "status === 'ERROR'" in expressions[0]
-    assert "'HIGH', 'CRITICAL'" in expressions[1] and "alert_id" in expressions[1]
-    assert "'LOW', 'MEDIUM'" in expressions[2] and "alert_id === null" in expressions[2]
+    assert "risk_score >= 50" in expressions[1] and "alert_id" in expressions[1]
+    assert "risk_score < 50" in expressions[2] and "alert_id === null" in expressions[2]
     assert all("'COMPLETED', 'FALLBACK'" in expr for expr in expressions[1:])
     assert nodes["Route result"]["parameters"]["options"]["fallbackOutput"] == "extra"
     outputs = workflow["connections"]["Route result"]["main"]

@@ -49,4 +49,4 @@ def test_raising_semantic_score_can_trigger_legitimate_alert():
     result = compare([case], load_synthetic_context(), (20, 80))
     assert result["20"]["both"]["LEGITIMATE_alerts"] == 0
     assert result["80"]["both"]["LEGITIMATE_alerts"] == 1
-    assert result["80"]["current"]["LEGITIMATE_alerts"] == 0
+    assert result["80"]["baseline_50_50_70"]["LEGITIMATE_alerts"] == 0
