@@ -323,6 +323,7 @@ small {
   color: #c0ced8;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   z-index: 30;
   border-right: 1px solid var(--nav-border);
 }
@@ -411,6 +412,9 @@ small {
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   height: 64px;
   background: white;
   border-bottom: 1px solid var(--border);
@@ -420,6 +424,10 @@ small {
   align-items: center;
   font-size: 0.88rem;
   color: var(--muted);
+}
+
+#content {
+  scroll-margin-top: 64px;
 }
 
 .topbar-title {
@@ -2184,7 +2192,9 @@ summary {
     display: block;
   }
   .sidebar {
-    position: relative;
+    position: sticky;
+    inset: 0 auto auto 0;
+    max-height: 100dvh;
     width: auto;
     padding: 14px 18px;
     display: flex;
@@ -2218,6 +2228,7 @@ summary {
     margin: 0;
   }
   .topbar {
+    position: static;
     height: 64px;
     padding: 0 18px;
   }
@@ -2240,6 +2251,7 @@ summary {
     text-align: left;
   }
   #content {
+    scroll-margin-top: 72px;
     padding: 20px 16px 36px;
   }
   .page-header {
