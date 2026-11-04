@@ -5,6 +5,24 @@ import type { Analysis, EmailDetail } from './types';
 
 export const ALERT_THRESHOLD = 70;
 
+const signalTitles: Record<string, string> = {
+  EXECUTIVE_IDENTITY_MISMATCH: 'Dirección de ejecutivo no reconocida',
+  EXECUTIVE_DOMAIN_LOOKALIKE: 'Dominio similar al de un ejecutivo',
+  VENDOR_IDENTITY_MISMATCH: 'Identidad de proveedor no coincidente',
+  VENDOR_DOMAIN_LOOKALIKE: 'Dominio similar al de un proveedor',
+  REPLY_TO_MISMATCH: 'Dirección de respuesta diferente',
+  RETURN_PATH_MISMATCH: 'Dominio de envío diferente',
+  SPF_FAIL: 'Falló la verificación SPF',
+  DKIM_FAIL: 'Falló la verificación DKIM',
+  DMARC_FAIL: 'Falló la verificación DMARC',
+  PAYMENT_REQUEST: 'Solicitud de pago o transferencia',
+  BANK_ACCOUNT_CHANGE: 'Cambio de cuenta o beneficiario',
+  SENSITIVE_DATA_REQUEST: 'Solicitud de información sensible',
+  URGENCY: 'Presión para actuar con urgencia',
+  AUTHORITY_PRESSURE: 'Solicitud en nombre de una autoridad',
+  SECRECY_REQUEST: 'Solicitud de evitar la verificación',
+};
+
 const errorExplanations: Record<string, { title: string; detail: string }> = {
   LLM_NOT_CONFIGURED: {
     title: 'Proveedor de IA sin configurar',
@@ -99,8 +117,12 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
           <p>{analysis.recommended_action}</p>
         </div>
       </section>
-      <section className="panel">
+      <section className="panel evidence-panel">
         <h2>Evidencia explicable</h2>
+        <p className="evidence-intro">
+          Señales encontradas durante el análisis. Cada una aporta contexto para
+          revisar el correo; por sí sola no confirma fraude.
+        </p>
         {!analysis.signals.length && (
           <EmptyState>No se registraron señales adicionales.</EmptyState>
         )}
@@ -113,11 +135,6 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
                 key={source}
               >
                 <div className="signal-group-header">
-                  <span
-                    className={`signal-source-badge signal-source-${source.toLowerCase()}`}
-                  >
-                    {source}
-                  </span>
                   <h3>
                     {source === 'CONTEXT'
                       ? 'Contexto organizacional'
@@ -130,10 +147,15 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
                   {signals.map((s, i) => (
                     <li key={`${s.code}-${i}`}>
                       <div>
-                        <strong>{s.code}</strong>
+                        <strong>
+                          {signalTitles[s.code] ??
+                            (source === 'SEMANTIC'
+                              ? 'Señal identificada por el análisis semántico'
+                              : 'Señal detectada')}
+                        </strong>
                         {source !== 'SEMANTIC' && !!s.contribution && (
                           <span className="signal-contribution">
-                            +{s.contribution} puntos deterministas
+                            +{s.contribution} puntos por reglas
                           </span>
                         )}
                       </div>
@@ -166,7 +188,7 @@ export function AnalysisView({ analysis }: { analysis: Analysis }) {
             </div>
           </dl>
           <p className="muted">
-            El score es una evaluación del sistema, no una probabilidad de
+            El puntaje es una evaluación del sistema, no una probabilidad de
             fraude.
           </p>
         </details>

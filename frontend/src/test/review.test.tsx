@@ -160,7 +160,16 @@ it('detail safely renders email and separates signals', async () => {
       element?.tagName === 'PRE' && element.textContent === email.body_text,
   );
   expect(screen.getByText('Análisis semántico')).toBeInTheDocument();
-  expect(screen.queryByText('+0 puntos deterministas')).not.toBeInTheDocument();
+  expect(
+    screen.getByText('Cambio de cuenta o beneficiario'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('+15 puntos por reglas')).toBeInTheDocument();
+  expect(
+    screen.getByText('Señal identificada por el análisis semántico'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Señal detectada')).toBeInTheDocument();
+  expect(screen.queryByText('SEMANTIC_REQUEST')).not.toBeInTheDocument();
+  expect(screen.queryByText('+0 puntos por reglas')).not.toBeInTheDocument();
   expect(document.querySelector('.email-body script')).toBeNull();
   expect(document.querySelector('.email-body a')).toBeNull();
 });
