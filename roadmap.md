@@ -283,3 +283,13 @@ La prueba real con Gmail y Groq continúa en la etapa 5.
 No cambiar umbrales ni ejecutar evaluaciones masivas con proveedores externos sin
 acordar el alcance y consumo. El usuario prefiere usar pocos ejemplos reales para
 proteger su cuota de Groq.
+
+### Simulación de pesos y umbral
+
+- [x] Comparar sin proveedor 50/50 >=70, solo umbral 50, solo pesos 30/70 y
+      ambos cambios, con puntuaciones semánticas hipotéticas; conservar piso de
+      reglas fuertes y no evaluar holdout. Ver [evaluación](docs/evaluation.md).
+- [ ] Preparar casos nuevos etiquetados independientemente y evaluar resultados
+      semánticos reales con consumo autorizado antes de decidir la política.
+- [ ] Diseñar y validar por separado el comportamiento ante fallo de IA. Hoy el
+      análisis queda en ERROR; no existe un respaldo determinista completo.

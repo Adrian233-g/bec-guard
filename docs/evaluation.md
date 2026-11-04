@@ -147,3 +147,34 @@ inicializa proveedor. El evaluador solo pasa case.email y contexto al detector;
 anotaciones se leen después de obtener la predicción. No escribe DB ni ofrece HTTP.
 CI prueba métricas con fixtures artificiales; no ejecuta holdout formal.
 Los reportes operativos PDF/XLSX solo leen PostgreSQL y nunca importan este tooling.
+
+## Simulación de alternativas de puntaje (2026-11-04)
+
+`cd backend && .venv/bin/python -m app.scripts.compare_score_policies` compara la
+política actual (50/50, alerta >=70), bajar solo el umbral a 50, cambiar solo los
+pesos a 30/70, y aplicar ambas propuestas. Todas conservan el piso vigente de 70
+para reglas >=70. El script solo usa los 98 casos sintéticos de desarrollo, nunca
+procesa holdout ni llama a un proveedor. No modifica la política operativa.
+
+Se asigna la misma puntuación semántica **hipotética** (20, 50 u 80) a todos los
+correos de cada escenario. No son resultados de un modelo ni estimaciones de su
+precisión: sirven únicamente para visualizar el efecto aritmético y los riesgos
+si la IA puntúa mal. Etiquetas y ejemplos de desarrollo no son independientes
+para medir rendimiento generalizable.
+
+| Semántica hipotética | Política | Alertas BEC (28) | Alertas legítimos (70) |
+| --- | --- | ---: | ---: |
+| 20 | Actual | 11 | 0 |
+| 20 | 30/70 y >=50 | 11 | 0 |
+| 50 | Actual | 11 | 0 |
+| 50 | 30/70 y >=50 | 19 | 0 |
+| 80 | Actual | 17 | 0 |
+| 80 | 30/70 y >=50 | 28 | 70 |
+
+Con 30/70 y umbral 50, una puntuación semántica de 80 genera alerta incluso si
+las reglas dan 0; un error alto del modelo podría afectar correos legítimos.
+Estos escenarios no justifican activar ni descartar la propuesta por sí solos.
+Falta un conjunto nuevo, etiquetado independientemente, con resultados semánticos
+reales y medición de errores y consumo. Además, el respaldo determinista ante
+fallo de IA requeriría una implementación y validación separadas: actualmente el
+análisis queda en ERROR, no crea un resultado completo de respaldo.
