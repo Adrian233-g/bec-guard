@@ -159,7 +159,7 @@ it('detail safely renders email and separates signals', async () => {
     (_, element) =>
       element?.tagName === 'PRE' && element.textContent === email.body_text,
   );
-  expect(screen.getByText('Análisis semántico')).toBeInTheDocument();
+  expect(screen.getAllByText('Análisis semántico').length).toBeGreaterThan(0);
   expect(
     screen.getByText('Cambio de cuenta o beneficiario'),
   ).toBeInTheDocument();
@@ -168,10 +168,167 @@ it('detail safely renders email and separates signals', async () => {
     screen.getByText('Señal identificada por el análisis semántico'),
   ).toBeInTheDocument();
   expect(screen.getByText('Señal detectada')).toBeInTheDocument();
-  expect(screen.queryByText('SEMANTIC_REQUEST')).not.toBeInTheDocument();
+  expect(screen.getByText('SEMANTIC_REQUEST')).toBeInTheDocument();
   expect(screen.queryByText('+0 puntos por reglas')).not.toBeInTheDocument();
   expect(document.querySelector('.email-body script')).toBeNull();
   expect(document.querySelector('.email-body a')).toBeNull();
+});
+it('reconstructs the score path for a spoofing case', async () => {
+  setup('/alerts/alert-1', 'ANALYST', {
+    ...alert,
+    analysis: {
+      ...alert.analysis,
+      signals: [
+        {
+          code: 'EXECUTIVE_IDENTITY_MISMATCH',
+          source: 'CONTEXT',
+          description: 'Nombre conocido con dirección distinta.',
+          contribution: 35,
+        },
+        {
+          code: 'BANK_ACCOUNT_CHANGE',
+          source: 'RULE',
+          description: 'Solicita cambiar la cuenta.',
+          contribution: 24,
+        },
+        {
+          code: 'SEMANTIC_REQUEST',
+          source: 'SEMANTIC',
+          description: 'Se solicita una transferencia.',
+          contribution: 0,
+        },
+      ],
+      score_breakdown: {
+        mode: 'COMPLETED',
+        raw_deterministic_total: 114,
+        deterministic_score: 100,
+        semantic_score: 42,
+        weighted_score: 71,
+        floor_score: 70,
+        floor_reasons: ['IMPERSONATION_SENSITIVE_REQUEST'],
+        final_score: 71,
+        alert_threshold: 50,
+        alert_triggered: true,
+      },
+    },
+  });
+  await screen.findByText('Suma bruta determinista');
+  expect(screen.getByText('114')).toBeInTheDocument();
+  expect(screen.getByText('Piso de política')).toBeInTheDocument();
+  expect(
+    screen.getByText('suplantación combinada con una solicitud sensible'),
+  ).toBeInTheDocument();
+  expect(screen.getByText('No suma al score')).toBeInTheDocument();
+  expect(screen.getByText(/no una probabilidad/)).toBeInTheDocument();
+});
+it('explains a hard legitimate case without treating authentication as proof', async () => {
+  setup('/alerts/alert-1', 'ANALYST', {
+    ...alert,
+    analysis: {
+      ...alert.analysis,
+      deterministic_score: 8,
+      semantic_score: 12,
+      risk_score: 10,
+      risk_level: 'LOW',
+      bec_type: null,
+      signals: [
+        {
+          code: 'PAYMENT_REQUEST',
+          source: 'RULE',
+          description: 'El mensaje plantea un pago.',
+          contribution: 8,
+        },
+      ],
+      score_breakdown: {
+        mode: 'COMPLETED',
+        raw_deterministic_total: 8,
+        deterministic_score: 8,
+        semantic_score: 12,
+        weighted_score: 10,
+        floor_score: 0,
+        floor_reasons: [],
+        final_score: 10,
+        alert_threshold: 50,
+        alert_triggered: false,
+      },
+    },
+  });
+  await screen.findByText(/no descartan una cuenta comprometida/);
+  expect(await screen.findByText('Authentication-Results')).toBeInTheDocument();
+  expect(
+    screen.getByText(/verifica por un canal conocido/),
+  ).toBeInTheDocument();
+});
+it('keeps semantic and deterministic disagreement visible', async () => {
+  setup('/alerts/alert-1', 'ANALYST', {
+    ...alert,
+    analysis: {
+      ...alert.analysis,
+      deterministic_score: 70,
+      semantic_score: 10,
+      risk_score: 70,
+      risk_level: 'HIGH',
+      score_breakdown: {
+        mode: 'COMPLETED',
+        raw_deterministic_total: 70,
+        deterministic_score: 70,
+        semantic_score: 10,
+        weighted_score: 40,
+        floor_score: 70,
+        floor_reasons: ['DETERMINISTIC_SCORE_GE_70'],
+        final_score: 70,
+        alert_threshold: 50,
+        alert_triggered: true,
+      },
+    },
+  });
+  await screen.findByText('40/100');
+  expect(screen.getAllByText('70/100').length).toBeGreaterThan(1);
+  expect(
+    screen.getAllByText(/suplantación combinada|score determinista/).length,
+  ).toBeGreaterThan(0);
+});
+it('does not present semantic explanation during fallback', async () => {
+  setup('/alerts/alert-1', 'ANALYST', {
+    ...alert,
+    analysis: {
+      ...alert.analysis,
+      status: 'FALLBACK',
+      semantic_score: null,
+      risk_score: 58,
+      risk_level: 'MEDIUM',
+      summary: 'Evaluación limitada a reglas.',
+      recommended_action: 'Verificar por canal conocido.',
+      signals: [
+        {
+          code: 'BANK_ACCOUNT_CHANGE',
+          source: 'RULE',
+          description: 'Solicita cambiar la cuenta.',
+          contribution: 24,
+        },
+      ],
+      score_breakdown: {
+        mode: 'FALLBACK',
+        raw_deterministic_total: 58,
+        deterministic_score: 58,
+        semantic_score: null,
+        weighted_score: null,
+        floor_score: 0,
+        floor_reasons: [],
+        final_score: 58,
+        alert_threshold: 50,
+        alert_triggered: true,
+      },
+    },
+  });
+  await screen.findByText('Análisis limitado a reglas');
+  expect(
+    screen.queryByText(
+      'El siguiente texto fue generado por el proveedor semántico.',
+    ),
+  ).not.toBeInTheDocument();
+  expect(screen.getAllByText('No disponible').length).toBeGreaterThan(0);
+  expect(screen.queryByText('Análisis semántico')).not.toBeInTheDocument();
 });
 it.each(['CONFIRMED_BEC', 'FALSE_POSITIVE'] as const)(
   'claim and resolve %s',

@@ -79,6 +79,13 @@ DatasetCase/DatasetLabel/ExpectedBECType son schemas de evaluación separados de
 SQLAlchemy. `expected_bec_type` es null en legítimos y obligatorio con un valor
 permitido en BEC. `is_hard_negative` solo puede marcar legítimos.
 
+Los datasets independientes pueden añadir `group_id` y `label_rationale`.
+`group_id` identifica mensajes dependientes por hilo, plantilla, campaña o familia;
+el evaluador exige que no cruce `development`, `holdout` o `evaluation`. La
+justificación de etiqueta permanece como metadata de evaluación y nunca llega al
+detector. El corpus histórico no tiene esos campos obligatorios y conserva su
+contrato cerrado.
+
 **Solo `case.email` es un EmailIngestRequest.** Nunca pasar `case.model_dump()` al
 análisis o a la API. label, split, expected_bec_type e is_hard_negative no son
 features de producción ni columnas de emails. El contrato HTTP rechaza estos
@@ -89,7 +96,9 @@ las etiquetas son anotaciones del diseño sintético de cada caso.
 ## Loader y CLI
 
 `app.services.dataset.load_dataset(path)` devuelve DatasetCase validados y permite
-obtener la entrada normalizada como `case.email`. No usa red ni PostgreSQL.
+obtener la entrada normalizada como `case.email`. No usa red ni PostgreSQL. Para un
+conjunto independiente, el runner usa `validate_fixed=False` y exige grupos mediante
+`require_group_id=True`; el loader histórico mantiene sus conteos exactos.
 Comprueba filas, campos, identidades case_id/Message-ID únicas, labels/tipos,
 conteos exactos por split/tipo y al menos 20 hard negatives. También rechaza emails
 o URLs HTTP(S) con dominios no reservados en el corpus. Estas verificaciones no
@@ -103,6 +112,8 @@ Desde backend/, sin .env ni base de datos:
 uv run python -m app.scripts.validate_dataset
 # O un archivo explícito con el mismo formato/conteos:
 uv run python -m app.scripts.validate_dataset ../datasets/bec_eval.jsonl
+# Un corpus nuevo, solo evaluation, sin conteos históricos rígidos:
+uv run python -m app.scripts.validate_dataset --independent ../datasets/bec_eval_independent.jsonl
 uv run pytest tests/test_dataset.py
 ```
 

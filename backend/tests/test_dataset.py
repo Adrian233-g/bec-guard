@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 import pytest
 from pydantic import ValidationError
 
+from app.schemas.dataset import DatasetCase
 from app.schemas.email import EmailIngestRequest
 from app.schemas.organizational_context import ExecutiveContactCreate, VendorCreate
 from app.scripts.validate_dataset import main
@@ -14,8 +15,10 @@ from app.services.dataset import (
     EXPECTED_SPLITS,
     EXPECTED_TYPES,
     DatasetValidationError,
+    dataset_descriptive_summary,
     dataset_summary,
     load_dataset,
+    validate_independence_groups,
 )
 
 
@@ -37,6 +40,29 @@ def test_exact_counts_labels_splits_and_hard_negatives(corpus):
     assert len({case.email.body_text for case in corpus}) == 140
 
 
+def test_development_descriptive_summary_is_aggregate_only(corpus):
+    summary = dataset_descriptive_summary(corpus)
+    assert summary["split"] == "development"
+    assert summary["total"] == 98
+    assert summary["labels"] == {"LEGITIMATE": 70, "BEC": 28}
+    assert summary["bec_types"] == {
+        "EXECUTIVE_IMPERSONATION": 8,
+        "VENDOR_FRAUD": 7,
+        "BANK_ACCOUNT_CHANGE": 6,
+        "SENSITIVE_DATA_REQUEST": 4,
+        "OTHER": 3,
+    }
+    assert summary["hard_negatives"] == {"count": 21, "percentage": 21.43}
+    assert summary["text_lengths"]["body_text"]["overall"]["count"] == 98
+    assert summary["text_lengths"]["subject_body"]["by_label"]["BEC"]["count"] == 28
+    assert summary["missing_fields"]["sender_name"]["count"] >= 0
+    serialized = json.dumps(summary)
+    assert "body_text" in serialized
+    assert "Luminaria" not in serialized
+    assert "CASE-" not in serialized
+    assert "LEGITIMATE" in serialized
+
+
 def test_all_emails_valid_synthetic_and_metadata_separate(corpus):
     for case in corpus:
         assert isinstance(case.email, EmailIngestRequest)
@@ -54,6 +80,23 @@ def test_all_emails_valid_synthetic_and_metadata_separate(corpus):
             assert urlsplit(url).hostname.endswith(".example")
         with pytest.raises(ValidationError):
             EmailIngestRequest.model_validate_json(case.model_dump_json())
+
+
+def test_independent_dataset_requires_disjoint_groups(corpus):
+    with pytest.raises(DatasetValidationError, match="Missing independence group"):
+        validate_independence_groups(corpus, require_group_id=True)
+    first = DatasetCase.model_validate(
+        {**corpus[0].model_dump(mode="python"), "group_id": "GROUP_A"}
+    )
+    second = DatasetCase.model_validate(
+        {
+            **corpus[1].model_dump(mode="python"),
+            "split": "evaluation",
+            "group_id": "GROUP_A",
+        }
+    )
+    with pytest.raises(DatasetValidationError, match="crosses dataset splits"):
+        validate_independence_groups([first, second], require_group_id=True)
 
 
 def test_synthetic_context_is_valid_and_not_loaded_into_database():
@@ -155,6 +198,16 @@ def test_cli_only_prints_counts(monkeypatch, capsys):
     assert json.loads(output.out)["total"] == 140
     assert "sender_email" not in output.out and "body_text" not in output.out
     assert output.err == ""
+
+
+def test_cli_descriptive_prints_aggregate_development_stats(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["validate_dataset", "--descriptive"])
+    assert main() == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["split"] == "development"
+    assert output["total"] == 98
+    assert "body_text" in output["text_lengths"]
+    assert "Luminaria" not in json.dumps(output)
 
 
 def test_cli_missing_file_returns_clean_error(monkeypatch, capsys, tmp_path):

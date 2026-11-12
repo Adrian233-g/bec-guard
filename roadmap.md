@@ -1,6 +1,6 @@
 # Roadmap: BEC Guard por organización y buzones personales
 
-Última actualización: 2026-10-31.
+Última actualización: 2026-11-11.
 
 Este documento registra la dirección acordada con el usuario y el avance del
 proyecto. Las casillas pendientes son trabajo por implementar, no funcionalidades
@@ -109,7 +109,8 @@ combinan sin conceder acceso a otros correos normales.
       La migración se validó en PostgreSQL aislado y se aplicó a la instancia local
       el 2026-10-31; otras instalaciones deben aplicar la revisión 0009.
 - [x] Contactos ejecutivos/proveedores, ingestión, análisis híbrido con LangChain,
-      alertas >=70, cola y revisión humana; bitácora y reportes operativos.
+      alertas >=50 para COMPLETED/FALLBACK, cola y revisión humana; bitácora y
+      reportes operativos.
 - [x] Un Gmail conectado manualmente a un workflow n8n mediante IMAP. Se probó
       la llegada y el análisis de dos correos con Groq.
 - [x] La instancia de n8n guarda historial sin borrado automático. El historial
@@ -176,20 +177,20 @@ La migración y el conector existente requieren configuración explícita: ver
 
 ### 3. Conectar Gmail desde BEC Guard
 
-- [ ] Añadir pantalla para ingresar Gmail y contraseña de aplicación; verificar,
-      conectar y desconectar. Implementado en código y probado con servicios
-      simulados; falta validar con n8n y Gmail reales, además de actualizar
-      credenciales revocadas y recuperar operaciones interrumpidas.
-- [ ] Definir almacenamiento cifrado y gestión de claves/secretos; el código usa
+- [x] Añadir pantalla para ingresar Gmail y contraseña de aplicación; verificar,
+      conectar y desconectar. La pantalla también muestra cuando una conexión
+      quedó pendiente de revisión y evita ofrecer un reintento inválido. Falta
+      validar con n8n y Gmail reales, además de actualizar credenciales revocadas
+      y recuperar operaciones interrumpidas.
+- [x] Definir almacenamiento cifrado y gestión de claves/secretos; el código usa
       credenciales cifradas de n8n y no guarda la contraseña en BEC Guard. Falta
       comprobar el ciclo real y el respaldo de claves y credenciales.
-- [ ] Crear, activar y detener receptores IMAP por buzón sin acceso del empleado
-      a n8n. Implementado en código con credenciales separadas y checkpoints;
-      falta validar contra n8n real y automatizar la reconciliación de fallos.
-- [ ] Garantizar el punto de partida independiente por buzón y la regla de omitir
-      correos recibidos mientras el workflow estaba apagado. Adaptar el ajuste actual
-      de n8n a los receptores generados. El ajuste tiene pruebas simuladas por
-      buzón; falta probar los receptores reales y sus reinicios de extremo a extremo.
+- [x] Crear, activar y detener receptores IMAP por buzón sin acceso del empleado
+      a n8n. El código usa credenciales separadas y checkpoints; falta validar
+      contra n8n real y automatizar la reconciliación de fallos.
+- [x] Garantizar en el código el punto de partida independiente por buzón y la
+      regla de omitir correos recibidos mientras el workflow estaba apagado. Falta
+      probar los receptores reales y sus reinicios de extremo a extremo.
 - [ ] Gestionar credenciales inválidas o revocadas y errores de conexión sin marcar
       correos como seguros. Evitar reintentos que consuman cuota sin necesidad.
 - [ ] Revisar el historial de ejecuciones de n8n y permisos al editor: conservar
@@ -223,8 +224,8 @@ al 5 %. No iniciar una minitarea nueva después del aviso; dejar el avance claro
       acciones de marcar uno o todos como leídos. Sin canal externo ni duplicados
       por alerta/destinatario. Guardado en `notifications` (revisión 0013) y
       probado con API y frontend simulados. Sin backfill para alertas anteriores.
-- [x] **4.5. Riesgo medio y errores:** la UI muestra que MEDIUM (40–69) no genera
-      alerta automática y que el umbral sigue en >=70, sin cambiar la política.
+- [x] **4.5. Riesgo medio y errores:** la UI muestra que MEDIUM 40–49 no genera
+      alerta automática, MEDIUM 50–69 sí genera alerta y el umbral operativo es >=50.
       Se añadió `LLM_RATE_LIMITED` (HTTP 429) con detección por metadatos del
       proveedor y mensajes accionables; los reintentos siguen siendo manuales.
       Revisión 0014 aplicada.
@@ -257,17 +258,17 @@ La prueba real con Gmail y Groq continúa en la etapa 5.
 
 ### 5. Verificación y demostración
 
-- [ ] Cubrir permisos, acceso directo entre usuarios, escalamiento, duplicados entre
+- [x] Cubrir permisos, acceso directo entre usuarios, escalamiento, duplicados entre
       buzones, errores IMAP/IA y migraciones con pruebas locales, fakes y PostgreSQL
       aislado. No gastar llamadas a proveedores para pruebas que pueden simularse.
 - [ ] Probar un buzón real con pocos mensajes y cuota controlada: correo legítimo,
       correo sospechoso y correo enviado con Docker apagado. Confirmar que el último
       no se procese al arrancar y que los nuevos sí. Registrar los límites observados.
-- [ ] Verificar con al menos dos usuarios y buzones simulados que no hay acceso
+- [x] Verificar con al menos dos usuarios y buzones simulados que no hay acceso
       cruzado; no inferir aislamiento multiusuario de una demo con una sola cuenta.
 - [ ] Demostrar administrador → empleado conecta Gmail → correo entrante → resultado
       → alerta → analista investiga y resuelve → empleado ve estado → bitácora.
-- [ ] Actualizar README, guías y estado de este roadmap con lo realmente terminado.
+- [x] Actualizar README, guías y estado de este roadmap con lo realmente terminado.
 
 ## Pendiente de definir antes de implementar cada parte
 

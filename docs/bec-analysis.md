@@ -8,6 +8,49 @@ monolito síncrono: reglas + contexto activo → semántica LangChain → scorin
 → resultado y auditoría en un commit. Fase 6 añade BECAlert OPEN para COMPLETED
 >=50 en esa misma transacción, sin ejecutar recomendaciones.
 
+## Motor y configuración efectiva
+
+El flujo de Fase 2 no entrena un modelo propio ni ejecuta acciones externas:
+
+```text
+Email persistido
+    │
+    ├─ contexto activo + reglas deterministas (det-v3)
+    │       └─ score, tipo sugerido y señales RULE/CONTEXT
+    │
+    ├─ JSON de correo no confiable + hechos derivados
+    │       └─ un único modelo LangChain (semantic-v2)
+    │              └─ SemanticAssessment validado por JSON Schema y Pydantic
+    │
+    ├─ éxito: media 50/50 + pisos de seguridad (hybrid-v2)
+    │       └─ COMPLETED, semantic_score y resultado híbrido
+    │
+    └─ fallo de IA: solo reglas
+            └─ FALLBACK, semantic_score=null y error_code sanitizado
+
+Resultado + duración + auditoría + alerta eventual
+```
+
+| Parámetro efectivo | Valores o límite | Política vigente |
+| --- | --- | --- |
+| `LLM_PROVIDER` | `openai`, `google`/`gemini`, `groq` | Se usa un solo proveedor; no hay fallback entre proveedores |
+| `LLM_MODEL` | ID no vacío, máximo 200 caracteres | Debe soportar JSON Schema nativo |
+| `OPENAI_API_KEY` / `GOOGLE_API_KEY` / `GROQ_API_KEY` | Secreto del proveedor seleccionado | Las claves de otros proveedores no se usan |
+| `LLM_TIMEOUT_SECONDS` | 1–120 segundos; default 30 | Error → `FALLBACK` |
+| SDK retries | `max_retries=0` | Los reintentos son solicitudes explícitas de aplicación |
+| Salida semántica | `risk_score`, `bec_type`, hasta 8 señales, `summary`, `recommended_action` | Campos extra o texto libre inválido → `FALLBACK` |
+| Pesos híbridos | Determinista 50% + IA 50% | Redondeo entero half-up |
+| Piso determinista fuerte | Score determinista `>=70` | Resultado mínimo 70 |
+| Piso suplantación general | `IMPERSONATION_REQUEST` | Resultado mínimo 50 |
+| Piso solicitud sensible | `IMPERSONATION_SENSITIVE_REQUEST` | Resultado mínimo 70 |
+| Nivel | 0–39 / 40–69 / 70–84 / 85–100 | LOW / MEDIUM / HIGH / CRITICAL |
+| Alerta | Score final o determinista `>=50` | Política operativa separada del nivel |
+| Duración | `duration_ms >= 0` | Se registra para análisis nuevos; históricos pueden ser `null` |
+
+Las políticas hipotéticas de pesos, pisos o umbrales se pueden comparar con
+`compare_score_policies.py`, pero no modifican `det-v3`, `semantic-v2`,
+`hybrid-v2` ni `ALERT_THRESHOLD=50`.
+
 ## Motor determinista (`det-v3`)
 
 `assess_deterministically(email, context)` es puro. `load_analysis_context(session)`
@@ -176,10 +219,11 @@ aditivo propio, participan mediante semantic_score en la media.
 
 ## Persistencia, transacción y concurrencia
 
-`public.email_analysis`, revisión nueva `0006_email_analysis` sobre 0005:
+`public.email_analysis`, revisión de duración `0017_analysis_duration` sobre 0016:
 UUID, FK RESTRICT a emails, UNIQUE email_id, status, deterministic_score,
 semantic_score/risk_score/risk_level/bec_type nullable, signals JSONB, summary,
-recommended_action, provider, model, policy_version, error_code y analyzed_at UTC.
+recommended_action, provider, model, policy_version, error_code, analyzed_at UTC y
+duration_ms nullable para conservar compatibilidad con análisis históricos.
 Los análisis nuevos usan `det-v3/semantic-v2/hybrid-v2`; los históricos conservan
 la versión con que se calcularon. No hay índices adicionales
 a PK y UNIQUE; la consulta real es por email_id. CHECKs validan enums, rangos,
@@ -221,6 +265,26 @@ crea alerta con el umbral vigente >=50. No se reintenta automáticamente ni al
 repetir POST; los análisis ERROR históricos sí pueden reintentarse. Los fallos de
 base de datos y auditoría responden 503 y revierten la transacción. Ver el
 [contrato](api-contracts.md).
+
+## Interpretación de niveles y alertas
+
+El score es un indicador ordinal de riesgo, no una probabilidad calibrada. Estos
+casos sintéticos muestran la diferencia entre nivel y escalamiento operativo:
+
+| Determinista | Semántico | Señal de piso | Score final | Nivel | Alerta |
+| ---: | ---: | --- | ---: | --- | --- |
+| 0 | 0 | — | 0 | LOW | No |
+| 0 | 100 | — | 50 | MEDIUM | Sí |
+| 30 | 50 | — | 40 | MEDIUM | No |
+| 50 | 50 | — | 50 | MEDIUM | Sí |
+| 35 | 0 | `IMPERSONATION_REQUEST` | 50 | MEDIUM | Sí |
+| 35 | 0 | `IMPERSONATION_SENSITIVE_REQUEST` | 70 | HIGH | Sí |
+| 70 | 0 | determinista fuerte | 70 | HIGH | Sí |
+| 100 | 100 | determinista fuerte | 100 | CRITICAL | Sí |
+
+Un resultado `MEDIUM` entre 40 y 49 no crea alerta automática; un `MEDIUM` entre
+50 y 69 sí. La alerta no convierte el score en una probabilidad ni ejecuta la
+acción recomendada por el modelo.
 
 ## Regresión de development y límites
 

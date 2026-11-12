@@ -59,6 +59,8 @@ def test_connect_disconnect_and_reconnect_are_owner_scoped(
     )
     assert response.status_code == 200
     assert response.json()["status"] == "ACTIVE"
+    assert response.json()["connection_stage"] == "active"
+    assert response.json()["needs_reconciliation"] is False
     assert "private-password" not in response.text
     state = db_session.scalar(
         select(MailboxConnection).where(MailboxConnection.mailbox_id == mailbox.id)
@@ -125,6 +127,10 @@ def test_remote_error_quarantines_resources_and_prevents_automatic_retry(
     )
     assert state.stage == "imap-created" and state.needs_reconciliation
     assert db_session.get(Mailbox, mailbox.id).status == "PENDING"
+    mailbox_response = api_client.get(f"/api/mailboxes/{mailbox.id}", headers=headers)
+    assert mailbox_response.status_code == 200
+    assert mailbox_response.json()["connection_stage"] == "imap-created"
+    assert mailbox_response.json()["needs_reconciliation"] is True
     before = len(client.calls)
     assert (
         api_client.post(

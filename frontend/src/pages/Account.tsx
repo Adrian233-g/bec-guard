@@ -199,6 +199,11 @@ export function Account() {
               >
                 Desconectar Gmail
               </button>
+            ) : mailbox.needs_reconciliation ? (
+              <p role="status" className="threshold-note">
+                La conexión requiere revisión del administrador antes de volver
+                a intentarlo.
+              </p>
             ) : (
               <form onSubmit={(e) => void connectMailbox(e)}>
                 <label htmlFor="app-password">

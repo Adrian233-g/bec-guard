@@ -177,4 +177,251 @@ Estos escenarios no justifican activar ni descartar la propuesta por sí solos.
 Falta un conjunto nuevo, etiquetado independientemente, con resultados semánticos
 reales y medición de errores y consumo. Además, el respaldo determinista ante
 fallo de IA se implementó después como FALLBACK: su resultado es limitado y no
-demuestra precisión híbrida.
+ demuestra precisión híbrida.
+
+## Protocolo actual `eval-v2`
+
+`eval-v1` queda cerrado como registro histórico. El runner actual usa `eval-v2` y
+no debe ejecutarse contra el holdout histórico para ajustar reglas, pesos, prompts,
+umbrales o selección de proveedor. El árbol de trabajo debe estar limpio para que
+`freeze_metadata` pueda registrar un commit reproducible; cualquier cambio del
+detector o del dataset hace que el freeze falle.
+
+### Modos y estados
+
+| Modo | Entrada al detector | Estado esperado | Métricas principales |
+| --- | --- | --- | --- |
+| `deterministic` | Reglas y contexto activo | `COMPLETED` | Baseline sin proveedor |
+| `hybrid` | Reglas más un único proveedor autorizado | `COMPLETED` | Solo casos con salida semántica válida |
+| `fallback` | Reglas, simulando indisponibilidad de IA | `FALLBACK` | Respaldo determinista, separado del híbrido |
+| Cualquier modo con fallo sin score | Sin resultado evaluable | `ERROR` | Cuenta como error, nunca como legítimo |
+
+Cuando el proveedor falla durante `hybrid`, el runner conserva el score y tipo
+deterministas y registra `FALLBACK`. `ERROR` queda reservado para una ejecución sin
+score evaluable. Así, un error no se convierte en score cero ni en una predicción
+legítima.
+
+El resultado registra `completed`, `fallback`, `errors`, `coverage` de casos con
+score, `completed_coverage`, `fallback_rate` y `error_rate`. La cobertura completa
+de IA es distinta de la cobertura con respaldo.
+
+### Matrices y métricas
+
+Para cada grupo de ejecución se generan dos matrices independientes:
+
+| Criterio | Definición |
+| --- | --- |
+| Detección | `score >= 40` |
+| Alerta | `score >= 50` |
+
+Las métricas disponibles son TP, TN, FP, FN, denominador, precision,
+recall/sensibilidad, F1, accuracy, specificity, FPR y sensibilidad efectiva.
+
+`detection_metrics` y `alert_metrics` representan todos los casos con score válido.
+`completed_*_metrics` solo contiene resultados híbridos completos y
+`fallback_*_metrics` solo contiene respaldos. La sensibilidad efectiva conserva como
+denominador todos los BEC seleccionados, incluidos casos con `ERROR`.
+
+Las métricas de hard negatives informan total, completados, fallback, errores y FP
+con el denominador de hard negatives evaluables. Los tipos BEC se informan de forma
+análoga, siempre con el tamaño de cada categoría.
+
+### ROC y precision-recall
+
+`curves` se genera únicamente cuando cada caso seleccionado tiene etiqueta y score
+individual válido, y existen ambas clases. Se guardan puntos por umbral de score,
+no una curva reconstruida desde una matriz agregada. `completed_curves` y
+`fallback_curves` permiten observar cada régimen por separado. Si existen errores,
+la curva global se omite; no se imputan scores.
+
+Las curvas no sustituyen el punto operativo de detección 40 ni el de alerta 50.
+ROC-AUC y PR-AUC son descriptivos del conjunto evaluado y no son evidencia de
+calibración probabilística.
+
+### Conjunto independiente futuro
+
+Una evaluación nueva debe usar un archivo distinto de `datasets/bec_eval.jsonl` con
+split `evaluation`, `group_id` obligatorio y `label_rationale` para cada caso. Un
+`group_id` debe agrupar hilo, plantilla, campaña o familia de mensajes; el loader
+rechaza que un grupo cruce splits. Las etiquetas y sus justificaciones se congelan
+antes de medir y no se pasan al detector.
+
+El comando futuro tendrá esta forma:
+
+```bash
+uv run python -m app.scripts.evaluate_holdout \
+  --mode deterministic \
+  --split evaluation \
+  --dataset ../datasets/bec_eval_v2.jsonl \
+  --context ../datasets/context-v2.json \
+  --confirm-evaluation \
+  --output-dir ../artifacts/evaluation
+```
+
+Para `hybrid` se requiere además `--allow-external-llm`, con proveedor y modelo
+registrados en `freeze.json`. El conjunto histórico de 42 casos no se reutiliza ni
+se vuelve a puntuar.
+
+### Incertidumbre y comparaciones
+
+Solo con suficientes casos independientes se calcularán intervalos binomiales
+Wilson o Clopper-Pearson para proporciones. Con muestras pequeñas se mostrarán
+estimaciones descriptivas y denominadores, sin conclusiones fuertes.
+
+McNemar exacto se reservará para predicciones binarias pareadas sobre exactamente
+los mismos casos, reportando los dos conteos discordantes y el subconjunto común.
+Comparaciones múltiples usarán corrección de Holm. No se aplicarán estas pruebas
+entre el holdout histórico `eval-v1` y resultados de otra versión.
+
+### Resultados disponibles y pendientes
+
+| Experimento | Estado | Resultado |
+| --- | --- | --- |
+| Baseline determinista `eval-v1` sobre holdout histórico | Disponible | Matrices, métricas, hard negatives, tipos y latencia documentados arriba |
+| Simulación de scores semánticos sobre development | Disponible | Escenarios aritméticos; no son resultados de IA |
+| Híbrido real sobre holdout histórico | No ejecutar | Pendiente y prohibido para tuning |
+| Fallback sobre conjunto independiente | Pendiente | Requiere dataset nuevo y freeze |
+| ROC/PR del baseline histórico | No disponible en el repositorio | No se reconstruyen sin scores individuales congelados |
+| ROC/PR híbrido real | Pendiente | Requiere proveedor autorizado y scores individuales |
+| Intervalos y McNemar | Pendiente | Requiere tamaño y pares válidos |
+
+No se publican cifras nuevas hasta que un experimento `eval-v2` produzca sus propios
+artefactos, hashes, commit, proveedor, modelo, modo y denominadores.
+
+## Fase 7: optimización experimental de políticas
+
+Esta fase es una ampliación exploratoria y no cambia `hybrid-v2`, `alert-v2`, las
+filas `EmailAnalysis` existentes ni las alertas ya creadas. El módulo
+`app.evaluation.policy_experiment` no se importa desde FastAPI, no usa PostgreSQL,
+no llama proveedores y no contiene una operación para promover automáticamente una
+política. El CLI opcional es:
+
+```bash
+uv run python -m app.scripts.run_policy_experiment \
+  --semantic-score 20 50 80 \
+  --output ../artifacts/policy-experiment/development.json
+```
+
+El archivo de salida solo contiene métricas agregadas, parámetros y procedencia; no
+contiene cuerpos, asuntos, remitentes ni predicciones por caso. La búsqueda filtra y
+valida `split=development` antes de leer etiquetas para la evaluación. Si recibe un
+caso `holdout` o `evaluation`, falla de forma cerrada.
+
+### Objetivo y restricciones predeclarados
+
+La finalidad es aumentar la detección de BEC sin perder control operativo sobre
+falsos positivos, cobertura y consumo. Para cada trial se calcula:
+
+```text
+objective = recall - 0.25 * false_positive_rate - 0.10 * (1 - coverage)
+```
+
+Solo es seleccionable un trial que cumpla simultáneamente:
+
+| Restricción | Valor inicial | Motivo |
+| --- | ---: | --- |
+| False positive rate | `<= 0.05` | Evita convertir una cola sintética en una alarma masiva. |
+| Coverage | `>= 0.95` | Un fallo o score ausente no puede ocultarse como legítimo. |
+| Piso de seguridad | determinista `>=70` conserva score `>=70` | Evita que una semántica contradictoria borre evidencia local fuerte. |
+| Llamadas externas durante la búsqueda | `0` con escenarios hipotéticos | La comparación inicial es aritmética y reproducible. |
+
+El tamaño de development es 98 casos sintéticos, 70 legítimos y 28 BEC. Por eso
+estos límites son criterios de ingeniería para descartar candidatos, no intervalos
+de rendimiento poblacional. Los resultados deben mostrar siempre numeradores,
+denominadores y hard negatives; no se presentan como calidad productiva.
+
+### Búsqueda inicial
+
+Se usa una cuadrícula explícita de 25 trials, sin Optuna ni interfaz de trials:
+
+| Parámetro | Valores iniciales |
+| --- | --- |
+| Peso de reglas | `30, 40, 50, 60, 70` |
+| Peso semántico | `100 - peso de reglas` |
+| Umbral de alerta | `50, 55, 60, 65, 70` |
+| Piso determinista | fijo en `70` |
+| Pisos por señal | `IMPERSONATION_SENSITIVE_REQUEST=70`, `IMPERSONATION_REQUEST=50` |
+
+Los rangos son deliberadamente pequeños porque el corpus es sintético, no
+independiente y no permite justificar una optimización de alta dimensión. El empate
+se resuelve por objetivo descendente, recall descendente, FPR ascendente y umbral
+ascendente. `seed` se registra aunque la cuadrícula inicial sea determinista, para
+que un futuro muestreador reproducible no pueda omitir la semilla.
+
+El comparador `compare_score_policies.py` sigue siendo el primer instrumento para
+entender escenarios 50/50, 30/70 y umbrales alternativos. Sus scores semánticos
+constantes son hipótesis compartidas por todos los correos: no son observaciones de
+IA. La búsqueda nueva conserva esa distinción. Para un resultado empírico se debe
+proporcionar un cache de salidas reales, con un valor por `case_id`, sin permitir
+que el módulo invoque el proveedor.
+
+### Registro de trials
+
+Cada `TrialRecord` serializado contiene como mínimo:
+
+| Campo | Contenido |
+| --- | --- |
+| `trial_id` | Orden estable dentro de la búsqueda. |
+| `status` | `COMPLETED` o `FAILED`. |
+| `candidate` | Pesos, umbral y versión de pisos. |
+| `objective` | Valor calculado o `null` si falló. |
+| `feasible` / `constraints` | Resultado explícito de FPR y cobertura. |
+| `metrics` | TP/TN/FP/FN, recall, FPR, precision, cobertura y hard negatives. |
+| `seed` / `duration_ms` | Reproducibilidad y duración local. |
+| `semantic_source` | `hypothetical` o `cached_model_output`. |
+| `semantic_provider` / `semantic_model` / `semantic_prompt_version` | Procedencia de una salida real cacheada. |
+| `semantic_cache_sha256` | Identidad del artefacto de salidas, nunca su contenido. |
+| `estimated_external_calls` | Presupuesto declarado; la cuadrícula no realiza llamadas. |
+| `failure_reason` | Error sanitizado sin datos del correo. |
+
+No se registra el cuerpo del correo ni se envían etiquetas al motor. Una futura
+integración con Optuna tendría que justificarla frente a esta cuadrícula, conservar
+estos campos, fijar la semilla, registrar duración/estado y guardar el motivo de cada
+fallo. Optuna no debe introducirse solo para hacer más grande una búsqueda con 98
+ejemplos.
+
+### Validación anidada propuesta
+
+La selección final de una política experimental debe reservarse a una evaluación
+nueva independiente. Si el conjunto de development obtiene grupos estables por hilo,
+plantilla, campaña o familia, la propuesta es validación anidada de cinco folds
+externos y tres internos:
+
+1. Separar grupos, nunca filas, en cinco folds externos estratificados por etiqueta.
+2. En cada fold externo, ajustar pesos/umbral únicamente en sus tres folds internos.
+3. Evaluar una sola vez la política elegida en el fold externo y conservar sus
+   denominadores, FPR, recall, cobertura y consumo.
+4. Agregar los cinco resultados externos, sin seleccionar la política con el agregado
+   de los folds externos.
+
+Si alguna clase o grupo no permite cinco folds externos y tres internos sin fuga, se
+reduce el número de folds antes de ejecutar y se registra el motivo. El corpus actual
+no autoriza afirmar que esa condición ya se cumple: faltan grupos independientes
+suficientes para convertir esta propuesta en una medición. No se reentrena ningún
+LLM, no se comparten hilos entre folds y no se usa `holdout` histórico ni el conjunto
+final nuevo para elegir parámetros.
+
+### Consumo y procedencia externa
+
+Con scores hipotéticos, el coste es cero. Con scores de modelo cacheados, la llamada
+estimada es como máximo una por caso de development y se reutiliza la misma salida
+para todos los trials; no se llama una vez por combinación. Antes de una captura real
+se debe aprobar proveedor, modelo, versión de prompt, temperatura/configuración,
+timeout, número de casos, precio unitario y presupuesto máximo. El freeze debe guardar
+SHA del dataset, contexto, cache de salidas y configuración. Una salida simulada nunca
+se etiqueta como medición de proveedor.
+
+### Visualizaciones sin interfaz operativa
+
+Los artefactos experimentales pueden generar, fuera del producto:
+
+- Heatmap de `peso de reglas × umbral`, mostrando objetivo y una marca de factibilidad.
+- Frontera recall-FPR con puntos factibles y no factibles separados.
+- Barras por escenario semántico hipotético (`20/50/80`) con TP, FP y alertas.
+- Tabla/historial de trials con estado, duración, semilla y motivo de fallo.
+- Para datos reales cacheados, comparación por proveedor/modelo/prompt y consumo total.
+
+Estas vistas son de investigación y no deben aparecer en dashboard, cola de alertas,
+reportes operativos ni permisos de la aplicación. La política activa solo cambia
+después de seleccionar una candidata con evidencia de development, congelarla y
+ejecutar una única evaluación sobre un conjunto nuevo independiente.

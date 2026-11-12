@@ -18,20 +18,32 @@ from app.services.dataset import DEFAULT_DATASET_PATH, load_dataset
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=["deterministic", "hybrid"], required=True)
-    parser.add_argument("--confirm-holdout", action="store_true")
+    parser.add_argument("--mode", choices=["deterministic", "hybrid", "fallback"], required=True)
+    parser.add_argument(
+        "--confirm-holdout",
+        "--confirm-evaluation",
+        dest="confirmed",
+        action="store_true",
+    )
     parser.add_argument("--allow-external-llm", action="store_true")
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET_PATH)
     parser.add_argument("--context", type=Path, default=DEFAULT_CONTEXT_PATH)
+    parser.add_argument("--split", choices=["holdout", "evaluation"], default="holdout")
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args(argv)
-    if not args.confirm_holdout:
+    if not args.confirmed:
         parser.error("--confirm-holdout is required; no evaluation was started")
     if args.mode == "hybrid" and not args.allow_external_llm:
         parser.error("hybrid requires --allow-external-llm; no provider was initialized")
     try:
-        metadata = freeze_metadata(args.mode, args.dataset, args.context)
-        cases = load_dataset(args.dataset)
+        metadata = freeze_metadata(args.mode, args.dataset, args.context, split=args.split)
+        cases = load_dataset(
+            args.dataset,
+            validate_fixed=args.split == "holdout",
+            require_group_id=args.split == "evaluation",
+        )
+        if args.split == "evaluation" and args.dataset == DEFAULT_DATASET_PATH:
+            raise ValueError("Independent evaluation requires a separate dataset path")
         context = load_synthetic_context(args.context)
         if args.mode == "hybrid":
             settings = LLMSettings()

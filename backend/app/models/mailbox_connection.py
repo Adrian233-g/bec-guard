@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.mailbox import Mailbox
 
 
 class MailboxConnection(Base):
@@ -29,6 +35,7 @@ class MailboxConnection(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+    mailbox: Mapped[Mailbox] = relationship(back_populates="connection")
 
     __table_args__ = (
         Index("uq_mailbox_connections_mailbox_id", mailbox_id, unique=True),

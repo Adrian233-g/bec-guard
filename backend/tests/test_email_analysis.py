@@ -104,10 +104,14 @@ def test_completed_analysis_persisted_idempotent_and_audited(
     assert result["status"] == "COMPLETED"
     assert result["deterministic_score"] == 100
     assert result["semantic_score"] == 90
+    assert result["score_breakdown"]["mode"] == "COMPLETED"
+    assert result["score_breakdown"]["semantic_score"] == 90
+    assert result["score_breakdown"]["final_score"] == 95
     assert result["risk_score"] == 95 and result["risk_level"] == "CRITICAL"
     assert result["bec_type"] == "EXECUTIVE_IMPERSONATION"
     assert result["provider"] == "openai" and result["model"] == "fake-model"
     assert result["policy_version"] == "det-v3/semantic-v2/hybrid-v2"
+    assert isinstance(result["duration_ms"], float) and result["duration_ms"] >= 0
     assert {s["source"] for s in result["signals"]} == {"RULE", "CONTEXT", "SEMANTIC"}
     assert all(s["contribution"] == 0 for s in result["signals"] if s["source"] == "SEMANTIC")
     stored = db_session.get(EmailAnalysis, UUID(result["id"]))
@@ -140,7 +144,10 @@ def test_rules_fallback_is_audited_alerted_and_idempotent(
     assert result["status"] == "FALLBACK" and result["error_code"] == code
     assert result["deterministic_score"] == result["risk_score"] == 100
     assert result["risk_level"] == "CRITICAL" and result["semantic_score"] is None
+    assert result["score_breakdown"]["mode"] == "FALLBACK"
+    assert result["score_breakdown"]["semantic_score"] is None
     assert result["policy_version"] == "det-v3/fallback-v1"
+    assert isinstance(result["duration_ms"], float) and result["duration_ms"] >= 0
     assert all(s["source"] in {"RULE", "CONTEXT"} for s in result["signals"])
     assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
     counts = operational_summary(db_session)
@@ -339,6 +346,7 @@ def test_concurrent_analysis_spends_once(analysis_setup, migrated_engine, accoun
         ("risk_level", "LOW"),
         ("status", "ERROR"),
         ("error_code", "RAW_ERROR"),
+        ("duration_ms", -1),
     ],
 )
 def test_database_result_constraints(api_client, analysis_setup, db_session, field, value):

@@ -69,6 +69,7 @@ export const alert: AlertDetail = {
     summary: 'Solicitud de cambio de cuenta con identidad inconsistente.',
     recommended_action: 'Verificar por un canal conocido.',
     policy_version: 'hybrid-v1',
+    score_breakdown: null,
     error_code: null,
     analyzed_at: '2026-10-21T12:01:00Z',
     provider: 'openai',

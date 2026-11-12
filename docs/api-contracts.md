@@ -18,6 +18,11 @@ body_text; GET por UUID devuelve detalle. Sin PATCH/DELETE ni upload MIME.
 Contrato, límites y RBAC: [ingestión](email-ingestion.md). Se rechaza metadata de
 dataset: label, split, expected_bec_type e is_hard_negative no son entrada del motor.
 
+`GET /api/mailboxes` y `GET /api/mailboxes/{id}` devuelven el buzón del usuario y
+los campos operativos `connection_stage` y `needs_reconciliation`. No contienen
+contraseñas, tokens ni credenciales n8n. Un buzón con `needs_reconciliation=true`
+queda bloqueado para nuevos intentos hasta revisión manual de los recursos remotos.
+
 ## GET /health
 
 Sin autenticación. Comprueba API y PostgreSQL mediante SELECT 1; no escribe.
@@ -80,7 +85,20 @@ Ejemplo ilustrativo (50% de 80 + 50% de 90 = 85):
   "model": "<CONFIGURED_MODEL>",
   "policy_version": "det-v3/semantic-v2/hybrid-v2",
   "error_code": null,
-  "analyzed_at": "2026-10-21T05:00:00Z"
+  "score_breakdown": {
+    "mode": "COMPLETED",
+    "raw_deterministic_total": 114,
+    "deterministic_score": 100,
+    "semantic_score": 90,
+    "weighted_score": 95,
+    "floor_score": 70,
+    "floor_reasons": ["DETERMINISTIC_SCORE_GE_70"],
+    "final_score": 95,
+    "alert_threshold": 50,
+    "alert_triggered": true
+  },
+  "analyzed_at": "2026-10-21T05:00:00Z",
+  "duration_ms": 184.372
 }
 ```
 
@@ -100,7 +118,9 @@ del score ilustrativo. El backend devuelve la lista completa calculada.
 | provider / model | Configuración usada cuando está disponible; nullable en ERROR. Nunca claves. |
 | policy_version | Versiones determinista, prompt y scoring. |
 | error_code | Código fijo sanitizado en FALLBACK o ERROR; null en COMPLETED. |
+| score_breakdown | Recorrido auditable del score. `raw_deterministic_total` puede superar 100; `deterministic_score` ya aplica el límite. Las señales semánticas no se suman individualmente. Nullable para análisis históricos. |
 | analyzed_at | Fecha de la última ejecución, con timezone UTC. |
+| duration_ms | Duración no negativa de la ejecución nueva en milisegundos; nullable para análisis históricos. |
 
 La clasificación final desde 40 prefiere el patrón observado por reglas/contexto
 y después el sugerido por semántica; puede ser null si ninguno identifica tipo.
@@ -120,6 +140,12 @@ Un fallo de persistencia/auditoría devuelve el 503 genérico `Database unavaila
 y revierte el intento. Ese error de infraestructura no tiene el contrato de un
 análisis persistido. Las respuestas no incluyen raw output, prompt ni
 detalles internos del proveedor.
+
+`summary` y `recommended_action` en COMPLETED son texto estructurado generado por el
+proveedor semántico. No representan razonamiento interno verificable y no sustituyen
+la tabla de señales ni la revisión humana. En FALLBACK no existe `semantic_score` ni
+explicación semántica; `score_breakdown.mode` es `FALLBACK` y el resultado final es
+el score determinista.
 
 ## GET /api/emails/{email_id}/analysis
 

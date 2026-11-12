@@ -61,6 +61,21 @@ class SemanticAssessment(BaseModel):
         return value
 
 
+class ScoreBreakdown(BaseModel):
+    """Auditable score path; it is not a probability or model rationale."""
+
+    mode: Literal["COMPLETED", "FALLBACK"]
+    raw_deterministic_total: int = Field(ge=0)
+    deterministic_score: Score
+    semantic_score: Score | None
+    weighted_score: Score | None
+    floor_score: Score
+    floor_reasons: list[str]
+    final_score: Score
+    alert_threshold: Score
+    alert_triggered: bool
+
+
 class EmailAnalysisResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -79,4 +94,6 @@ class EmailAnalysisResponse(BaseModel):
     model: str | None
     policy_version: str
     error_code: str | None
+    score_breakdown: ScoreBreakdown | None
     analyzed_at: AwareDatetime
+    duration_ms: float | None

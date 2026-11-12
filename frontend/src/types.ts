@@ -23,6 +23,18 @@ export interface Signal {
   source: 'RULE' | 'CONTEXT' | 'SEMANTIC';
   contribution?: number;
 }
+export interface ScoreBreakdown {
+  mode: 'COMPLETED' | 'FALLBACK';
+  raw_deterministic_total: number;
+  deterministic_score: number;
+  semantic_score: number | null;
+  weighted_score: number | null;
+  floor_score: number;
+  floor_reasons: string[];
+  final_score: number;
+  alert_threshold: number;
+  alert_triggered: boolean;
+}
 export interface Analysis {
   id: string;
   email_id: string;
@@ -37,9 +49,11 @@ export interface Analysis {
   recommended_action: string | null;
   error_code: string | null;
   analyzed_at: string;
+  duration_ms?: number | null;
   policy_version: string;
   provider: string | null;
   model: string | null;
+  score_breakdown: ScoreBreakdown | null;
 }
 export interface Mailbox {
   id: string;
@@ -47,6 +61,8 @@ export interface Mailbox {
   email_address: string;
   provider: string;
   status: 'PENDING' | 'ACTIVE' | 'DISCONNECTED' | 'ERROR';
+  connection_stage: string | null;
+  needs_reconciliation: boolean;
   created_at: string;
   updated_at: string;
 }

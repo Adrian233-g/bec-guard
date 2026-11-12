@@ -12,6 +12,14 @@ from app.services.reporting import gather_report
 pytestmark = pytest.mark.integration
 
 
+def require_pdf_runtime():
+    try:
+        import weasyprint
+    except ImportError, OSError:
+        pytest.skip("PDF tests require the native WeasyPrint runtime")
+    return weasyprint
+
+
 @pytest.fixture
 def report_setup(db_session, account, alert_setup):
     email, assessment, headers = alert_setup
@@ -40,6 +48,8 @@ def test_report_rbac_and_http(api_client, db_session, account, report_setup, rol
     headers, _, _ = report_setup
     account.role = role
     db_session.commit()
+    if extension == "pdf" and role != Role.EMPLOYEE:
+        require_pdf_runtime()
     result = api_client.get(f"/api/reports/operational.{extension}", headers=headers)
     if role == Role.EMPLOYEE:
         assert result.status_code == 403
@@ -83,8 +93,11 @@ def test_report_dates_and_aggregation(db_session, report_setup):
     assert all_data.summary["emails_total"] == all_data.summary["analyses_completed"] == 1
     assert all_data.summary["analyses_error"] == 0
     assert all_data.summary["risk_distribution"]["CRITICAL"] == 1
+    assert all_data.summary["distribution_denominators"]["risk"] == 1
+    assert all_data.summary["distribution_percentages"]["risk"]["CRITICAL"] == 100.0
     assert all_data.summary["alerts"]["under_review"] == 1
     assert all_data.alerts[0].id == alert.id
+    assert all_data.alerts[0].analysis_mode == "COMPLETED"
     assert all_data.alerts[0].assigned_to_name.startswith("=HYPERLINK")
     before = gather_report(db_session, date(2026, 10, 20), date(2026, 10, 20))
     assert before.summary["emails_total"] == 1 and before.summary["analyses_completed"] == 0
@@ -104,14 +117,26 @@ def test_xlsx_structure_types_privacy_and_formula_safety(db_session, account, re
     _, _, email = report_setup
     report = gather_report(db_session)
     workbook = load_workbook(BytesIO(xlsx_bytes(report)))
-    assert workbook.sheetnames == ["Resumen", "Distribución de riesgo", "Tipos BEC", "Alertas"]
+    assert workbook.sheetnames == [
+        "Resumen",
+        "Distribución de riesgo",
+        "Tipos BEC",
+        "Estados de alerta",
+        "Veredictos humanos",
+        "Alertas",
+    ]
     assert workbook["Resumen"]["B6"].value == 1
+    assert workbook["Distribución de riesgo"]["B6"].value == 0
+    assert workbook["Distribución de riesgo"]["C6"].value == 1
+    assert workbook["Distribución de riesgo"]["D6"].value == 0.0
+    assert workbook["Distribución de riesgo"]["D6"].number_format == "0.0%"
     assert workbook["Alertas"]["C6"].value == 85
     assert isinstance(workbook["Alertas"]["B6"].value, datetime)
-    assert workbook["Alertas"]["H6"].value.startswith("=HYPERLINK")
-    assert workbook["Alertas"]["H6"].data_type == "s"
+    assert workbook["Alertas"]["F6"].value == "IA completa"
+    assert workbook["Alertas"]["I6"].value.startswith("=HYPERLINK")
+    assert workbook["Alertas"]["I6"].data_type == "s"
     assert workbook["Alertas"].freeze_panes == "A6"
-    assert workbook["Alertas"].auto_filter.ref == "A5:H6"
+    assert workbook["Alertas"].auto_filter.ref == "A5:I6"
     values = repr([[cell.value for row in sheet for cell in row] for sheet in workbook])
     for forbidden in (
         email.body_text,
@@ -148,8 +173,7 @@ def test_pdf_controlled_html_and_no_external_fetch(db_session, report_setup, acc
     ):
         assert forbidden not in html
     # The renderer needs no URL fetches: fonts come from the installed font system.
-    import weasyprint
-
+    weasyprint = require_pdf_runtime()
     real_html = weasyprint.HTML
 
     def controlled_html(*args, **kwargs):
@@ -162,6 +186,7 @@ def test_pdf_controlled_html_and_no_external_fetch(db_session, report_setup, acc
 
 
 def test_empty_report(db_session):
+    require_pdf_runtime()
     report = gather_report(db_session)
     assert report.summary["emails_total"] == report.summary["analyses_completed"] == 0
     assert not report.alerts and not report.summary["bec_type_distribution"]

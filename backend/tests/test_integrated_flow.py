@@ -220,7 +220,7 @@ def test_employee_alert_review_and_resolution_with_traceability(
     assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
 
 
-def test_medium_analysis_stays_out_of_the_alert_queue(
+def test_medium_analysis_enters_the_alert_queue(
     api_client, db_session, integrated_setup, analysis_stub
 ):
     setup = integrated_setup
@@ -236,17 +236,17 @@ def test_medium_analysis_stays_out_of_the_alert_queue(
     )
     assert analyzed.status_code == 200
     result = analyzed.json()
-    assert result["alert_id"] is None
+    assert result["alert_id"] is not None
     assert result["analysis"]["status"] == "COMPLETED"
     assert result["analysis"]["risk_level"] == "MEDIUM"
     assert 40 <= result["analysis"]["risk_score"] < 70
 
-    # No alert and no notice exist for MEDIUM, even for the security team.
-    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 0
-    assert db_session.scalar(select(func.count()).select_from(Notification)) == 0
+    # The current alert policy queues completed analyses at score 50 or above.
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
+    assert db_session.scalar(select(func.count()).select_from(Notification)) == 3
     for headers in (setup["employee_headers"], setup["analyst_headers"]):
-        assert api_client.get("/api/notifications", headers=headers).json() == []
-        assert api_client.get("/api/alerts", headers=headers).json() == []
+        assert len(api_client.get("/api/notifications", headers=headers).json()) == 1
+        assert len(api_client.get("/api/alerts", headers=headers).json()) == 1
 
     # The owner can read the completed analysis; outsiders still cannot.
     own = api_client.get(f"/api/emails/{email['id']}/analysis", headers=setup["employee_headers"])
@@ -259,5 +259,5 @@ def test_medium_analysis_stays_out_of_the_alert_queue(
     )
     assert (
         api_client.get(f"/api/emails/{email['id']}", headers=setup["analyst_headers"]).status_code
-        == 404
+        == 200
     )

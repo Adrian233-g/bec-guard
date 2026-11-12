@@ -16,6 +16,7 @@ class DatasetLabel(StrEnum):
 class DatasetSplit(StrEnum):
     DEVELOPMENT = "development"
     HOLDOUT = "holdout"
+    EVALUATION = "evaluation"
 
 
 class ExpectedBECType(StrEnum):
@@ -34,6 +35,8 @@ class DatasetCase(BaseModel):
     label: DatasetLabel
     expected_bec_type: ExpectedBECType | None
     is_hard_negative: bool = False
+    group_id: str | None = Field(default=None, pattern=r"^[A-Z0-9_-]{1,64}$")
+    label_rationale: str | None = Field(default=None, min_length=1, max_length=1000)
     email: EmailIngestRequest
 
     @model_validator(mode="after")

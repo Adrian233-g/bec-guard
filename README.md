@@ -290,7 +290,7 @@ El dueño y, si hay una alerta, ADMIN o ANALYST pueden leer el resultado. COMPLE
 llamada; ERROR se reintenta con el mismo POST y UUID del análisis. Los fallos LLM
 se persisten como ERROR con riesgo null y HTTP 502 (503 sin configuración, 429 si
 el proveedor agota cuota o limita peticiones), nunca
-LOW. Un COMPLETED >=70 crea una BECAlert OPEN con verdict null, sin ejecutar la
+LOW. Un COMPLETED o FALLBACK >=50 crea una BECAlert OPEN con verdict null, sin ejecutar la
 recomendación. GET /api/alerts y GET /api/alerts/{id} permiten lectura a todos los
 roles autenticados. Claim/release/resolve implementan HITL, sin PATCH/DELETE.
 La campana de avisos in-app notifica al dueño y al equipo activo; no envía correos.

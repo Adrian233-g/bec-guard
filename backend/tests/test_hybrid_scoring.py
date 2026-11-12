@@ -2,7 +2,13 @@ import pytest
 
 from app.models.enums import BECType, RiskLevel
 from app.schemas.analysis import DeterministicAssessment, SemanticAssessment
-from app.services.hybrid_scoring import combine_scores, resolve_bec_type, risk_level
+from app.services.hybrid_scoring import (
+    build_fallback_breakdown,
+    build_score_breakdown,
+    combine_scores,
+    resolve_bec_type,
+    risk_level,
+)
 
 
 @pytest.mark.parametrize(
@@ -65,3 +71,41 @@ def test_type_resolution():
     assert resolve_bec_type(70, det, sem) == BECType.OTHER
     sem.bec_type = None
     assert resolve_bec_type(70, det, sem) is None
+
+
+@pytest.mark.parametrize(
+    "det,sem,codes,expected",
+    [
+        (35, 0, {"IMPERSONATION_REQUEST"}, 50),
+        (35, 0, {"IMPERSONATION_SENSITIVE_REQUEST"}, 70),
+        (69, 0, set(), 35),
+        (70, 0, set(), 70),
+        (0, 99, set(), 50),
+    ],
+)
+def test_security_floors_are_independent_from_semantic_score(det, sem, codes, expected):
+    assert combine_scores(det, sem, signal_codes=codes) == expected
+
+
+def test_score_breakdown_reconstructs_cap_average_and_floor():
+    breakdown = build_score_breakdown(
+        100,
+        42,
+        signal_codes={"IMPERSONATION_SENSITIVE_REQUEST"},
+        raw_deterministic_total=114,
+    )
+    assert breakdown.raw_deterministic_total == 114
+    assert breakdown.deterministic_score == 100
+    assert breakdown.weighted_score == 71
+    assert breakdown.floor_score == 70
+    assert breakdown.final_score == 71
+    assert breakdown.alert_triggered is True
+
+
+def test_fallback_breakdown_has_no_semantic_path():
+    breakdown = build_fallback_breakdown(58, raw_deterministic_total=114)
+    assert breakdown.mode == "FALLBACK"
+    assert breakdown.semantic_score is None
+    assert breakdown.weighted_score is None
+    assert breakdown.final_score == 58
+    assert breakdown.alert_triggered is True

@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.identity import normalize_email
 from app.models import Mailbox, MailboxConnection, Role, User
@@ -63,13 +63,16 @@ def get_user_mailboxes(session: Session, user_id: UUID) -> list[Mailbox]:
     statement = (
         select(Mailbox)
         .where(Mailbox.user_id == user_id)
+        .options(selectinload(Mailbox.connection))
         .order_by(Mailbox.created_at.desc(), Mailbox.id)
     )
     return list(session.scalars(statement))
 
 
 def get_mailbox(session: Session, mailbox_id: UUID) -> Mailbox | None:
-    return session.get(Mailbox, mailbox_id)
+    return session.scalar(
+        select(Mailbox).where(Mailbox.id == mailbox_id).options(selectinload(Mailbox.connection))
+    )
 
 
 def update_mailbox_status(

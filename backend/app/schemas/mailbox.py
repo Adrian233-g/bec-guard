@@ -40,6 +40,8 @@ class MailboxResponse(BaseModel):
     email_address: str
     provider: str
     status: str
+    connection_stage: str | None = None
+    needs_reconciliation: bool = False
     created_at: AwareDatetime
     updated_at: AwareDatetime
 

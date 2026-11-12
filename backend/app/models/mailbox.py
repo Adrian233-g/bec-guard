@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Uuid, func, text
-from sqlalchemy.orm import Mapped, mapped_column, validates
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.core.identity import normalize_email
 from app.models.base import Base
+from app.models.mailbox_connection import MailboxConnection
 
 
 class Mailbox(Base):
@@ -24,6 +27,9 @@ class Mailbox(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+    connection: Mapped[MailboxConnection | None] = relationship(
+        back_populates="mailbox", uselist=False
+    )
 
     __table_args__ = (
         CheckConstraint("status IN ('PENDING', 'ACTIVE', 'DISCONNECTED', 'ERROR')", name="status"),
@@ -40,3 +46,11 @@ class Mailbox(Base):
     @validates("email_address")
     def normalize_identity(self, _key: str, value: str) -> str:
         return normalize_email(value)
+
+    @property
+    def connection_stage(self) -> str | None:
+        return self.connection.stage if self.connection else None
+
+    @property
+    def needs_reconciliation(self) -> bool:
+        return bool(self.connection and self.connection.needs_reconciliation)

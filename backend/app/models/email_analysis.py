@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -30,6 +31,7 @@ class EmailAnalysis(Base):
     risk_level: Mapped[str | None] = mapped_column(String(16))
     bec_type: Mapped[str | None] = mapped_column(String(32))
     signals: Mapped[list[dict]] = mapped_column(JSONB, nullable=False)
+    score_breakdown: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True))
     summary: Mapped[str | None] = mapped_column(String(600))
     recommended_action: Mapped[str | None] = mapped_column(String(400))
     provider: Mapped[str | None] = mapped_column(String(16))
@@ -37,6 +39,7 @@ class EmailAnalysis(Base):
     policy_version: Mapped[str] = mapped_column(String(80), nullable=False)
     error_code: Mapped[str | None] = mapped_column(String(32))
     analyzed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    duration_ms: Mapped[float | None] = mapped_column(Float)
 
     __table_args__ = (
         UniqueConstraint("email_id"),
@@ -56,6 +59,7 @@ class EmailAnalysis(Base):
             "'LLM_PROVIDER_ERROR', 'LLM_INVALID_OUTPUT')",
             name="error_code",
         ),
+        CheckConstraint("duration_ms IS NULL OR duration_ms >= 0", name="duration_ms"),
         CheckConstraint("jsonb_typeof(signals) = 'array'", name="signals_array"),
         CheckConstraint(
             "(status = 'COMPLETED' AND semantic_score IS NOT NULL AND risk_score IS NOT NULL "

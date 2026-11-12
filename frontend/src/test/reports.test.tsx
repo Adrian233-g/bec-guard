@@ -64,6 +64,9 @@ it.each(['ADMIN', 'ANALYST'] as const)(
     setup(role);
     await screen.findByRole('heading', { name: 'Reporte operativo' });
     expect(screen.getByRole('link', { name: 'Reportes' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/No es una evaluación independiente/),
+    ).toBeInTheDocument();
   },
 );
 it('employee has no reports link or download controls', async () => {

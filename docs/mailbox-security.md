@@ -8,6 +8,13 @@ solo cuando la pantalla confirma la conexión; eventos durante la publicación
 pueden rechazarse antes de esa confirmación. Las direcciones pendientes no reservan una
 dirección frente a otra persona; solo puede haber un buzón activo por dirección.
 
+Las respuestas de `/api/mailboxes` y `/api/mailboxes/{id}` incluyen también
+`connection_stage` y `needs_reconciliation`. El primer campo expone solo la etapa
+no secreta (`imap-created`, `workflow-created`, `active`, etc.); el segundo indica
+que una operación remota terminó con estado incierto. Cuando es `true`, la interfaz
+no ofrece otro intento de conexión: un administrador de n8n debe revisar los
+recursos y la fila `mailbox_connections` antes de continuar.
+
 El conector n8n existente utiliza una sola clave de automatización y queda limitado
 a **un buzón** definido en el backend mediante `AUTOMATION_MAILBOX_ID`. No elige el
 dueño a partir de los campos To/Cc ni acepta que el workflow lo especifique. Si la

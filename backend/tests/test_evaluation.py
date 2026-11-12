@@ -3,8 +3,10 @@ from datetime import UTC, datetime
 import pytest
 
 from app.evaluation.contracts import CasePrediction, EvaluationMetadata, EvaluationResult
+from app.evaluation.inference import holm_adjust, mcnemar_exact, wilson_interval
 from app.evaluation.metrics import (
     binary_metrics,
+    curve_metrics,
     hard_negative_metrics,
     latency_metrics,
     type_metrics,
@@ -23,7 +25,7 @@ def prediction(actual="BEC", score=70, *, hard=False, kind="OTHER", error=False,
         ground_truth=actual,
         expected_bec_type="OTHER" if actual == "BEC" else None,
         predicted_positive_detection=None if error else score >= 40,
-        predicted_positive_alert=None if error else score >= 70,
+        predicted_positive_alert=None if error else score >= 50,
         score=None if error else score,
         predicted_bec_type=None if error else kind,
         status="ERROR" if error else "COMPLETED",
@@ -33,17 +35,18 @@ def prediction(actual="BEC", score=70, *, hard=False, kind="OTHER", error=False,
     )
 
 
-def metadata(mode="deterministic"):
+def metadata(mode="deterministic", split="holdout"):
     return EvaluationMetadata(
         mode=mode,
+        split=split,
         generated_at=datetime.now(UTC),
         git_commit="a" * 40,
         dataset_sha256="b" * 64,
         context_sha256="c" * 64,
         policies={
-            "deterministic": "det-v1",
-            "semantic": "semantic-v1",
-            "hybrid": "hybrid-v1",
+            "deterministic": "det-v3",
+            "semantic": "semantic-v2",
+            "hybrid": "hybrid-v2",
             "alert": "alert-v2",
         },
         thresholds={"detection": 40, "alert": 50},
@@ -135,7 +138,7 @@ def test_hard_negatives_types_latency_and_serialization():
     ]
     hard = hard_negative_metrics(rows)
     assert hard.total == 2 and hard.false_positives_detection == 1 and hard.fpr_detection == 0.5
-    assert hard.false_positives_alert == 0 and hard.fpr_alert == 0
+    assert hard.false_positives_alert == 1 and hard.fpr_alert == 0.5
     types = type_metrics(rows)
     assert types.total_bec == 3 and types.correct == 1 and types.accuracy == 1 / 3
     assert types.breakdown["OTHER"] == {
@@ -164,6 +167,56 @@ def test_hard_negatives_types_latency_and_serialization():
         "authentication_results",
     ):
         assert secret not in result.model_dump_json()
+
+
+def test_curves_use_individual_scores_and_exclude_incomplete_runs():
+    rows = [prediction(score=90), prediction("LEGITIMATE", 10)]
+    curves = curve_metrics(rows, statuses=("COMPLETED",))
+    assert curves is not None
+    assert curves.cases == 2 and curves.positives == curves.negatives == 1
+    assert len(curves.roc) == 102 and len(curves.precision_recall) == 102
+    assert curves.roc_auc == 1 and curves.pr_auc > 0
+    error = prediction(error=True)
+    assert curve_metrics([*rows, error], statuses=("COMPLETED", "ERROR")) is None
+
+
+def test_fallback_mode_is_scored_separately_from_completed_results():
+    result = evaluate(
+        [case()],
+        AnalysisContext([], []),
+        metadata("fallback"),
+        detector=lambda *_: DeterministicAssessment(score=55, signals=[], bec_type="OTHER"),
+    )
+    assert result.completed == 0 and result.fallback == 1 and result.errors == 0
+    assert result.coverage == result.fallback_rate == 1
+    assert result.fallback_detection_metrics.tp == 1
+    assert result.completed_detection_metrics.tp == 0
+
+
+def test_inference_helpers_are_explicit_about_denominators_and_pairs():
+    assert wilson_interval(0, 0) is None
+    interval = wilson_interval(10, 12)
+    assert interval is not None
+    assert interval.successes == 10 and interval.trials == 12
+    assert 0 < interval.lower < interval.upper < 1
+    comparison = mcnemar_exact(
+        [True, True, False, False],
+        [True, False, True, False],
+    )
+    assert comparison.pairs == 4
+    assert comparison.discordant_left == comparison.discordant_right == 1
+    assert comparison.p_value == 1
+    assert holm_adjust([0.01, 0.04, 0.2]) == [0.03, 0.08, 0.2]
+
+
+def test_independent_evaluation_split_is_selected_without_holdout_reuse():
+    result = evaluate(
+        [case(split="holdout"), case(split="evaluation")],
+        AnalysisContext([], []),
+        metadata(split="evaluation"),
+        detector=lambda *_: DeterministicAssessment(score=0, signals=[], bec_type=None),
+    )
+    assert result.cases_total == 1 and result.cases[0].ground_truth == "BEC"
 
 
 def test_metadata_only_read_after_detector():
@@ -238,9 +291,11 @@ def test_hybrid_uses_production_policy_and_error_coverage():
         detector=lambda *_: DeterministicAssessment(score=80, signals=[], bec_type="VENDOR_FRAUD"),
     )
     assert result.cases[0].score == 70 and result.cases[0].predicted_bec_type == "VENDOR_FRAUD"
-    assert result.errors == 1 and result.completed == 1 and result.coverage == 0.5
-    assert result.cases[1].score is result.cases[1].predicted_positive_detection is None
-    assert result.detection_metrics.recall == 1 and result.detection_metrics.effective_recall == 0.5
+    assert result.errors == 0 and result.fallback == 1 and result.completed == 1
+    assert result.coverage == 1 and result.fallback_rate == 0.5
+    assert result.cases[1].status == "FALLBACK" and result.cases[1].score == 80
+    assert result.detection_metrics.recall == 1 and result.detection_metrics.effective_recall == 1
+    assert result.completed_detection_metrics.effective_recall == 0.5
     assert result.detection_metrics.fn == 0
 
 
@@ -249,7 +304,7 @@ def test_cli_rejects_before_loading_or_provider(monkeypatch, tmp_path, args):
     from app.scripts import evaluate_holdout as cli
 
     monkeypatch.setattr(
-        cli, "freeze_metadata", lambda *_: pytest.fail("Freeze called without consent")
+        cli, "freeze_metadata", lambda *_, **__: pytest.fail("Freeze called without consent")
     )
     argv = args if args else ["--mode", "deterministic"]
     with pytest.raises(SystemExit):
@@ -270,8 +325,8 @@ def test_cli_writes_private_reproducible_artifacts(monkeypatch, tmp_path, capsys
     frozen = metadata()
     frozen.dataset_sha256 = sha256(data)
     frozen.context_sha256 = sha256(context_file)
-    monkeypatch.setattr(cli, "freeze_metadata", lambda *_: frozen)
-    monkeypatch.setattr(cli, "load_dataset", lambda *_: [case()])
+    monkeypatch.setattr(cli, "freeze_metadata", lambda *_, **__: frozen)
+    monkeypatch.setattr(cli, "load_dataset", lambda *_, **__: [case()])
     monkeypatch.setattr(cli, "load_synthetic_context", lambda *_: AnalysisContext([], []))
     monkeypatch.setattr(
         cli,

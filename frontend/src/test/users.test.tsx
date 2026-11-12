@@ -191,3 +191,37 @@ it('employee connects a registered Gmail without keeping the app password visibl
     app_password: 'app-password-secret',
   });
 });
+
+it('shows reconciliation state instead of offering a rejected reconnect', async () => {
+  sessionStorage.setItem(tokenKey, 't');
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/auth/me'))
+      return response({ ...user, role: 'EMPLOYEE' });
+    if (url.endsWith('/mailboxes'))
+      return response([
+        {
+          id: 'mb1',
+          email_address: 'emp@gmail.com',
+          provider: 'gmail',
+          status: 'PENDING',
+          connection_stage: 'imap-created',
+          needs_reconciliation: true,
+        },
+      ]);
+    return response([]);
+  });
+  vi.stubGlobal('fetch', fetch);
+  render(
+    <MemoryRouter initialEntries={['/account']}>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </MemoryRouter>,
+  );
+  await screen.findByText(
+    'La conexión requiere revisión del administrador antes de volver a intentarlo.',
+  );
+  expect(
+    screen.queryByRole('button', { name: 'Conectar Gmail' }),
+  ).not.toBeInTheDocument();
+});

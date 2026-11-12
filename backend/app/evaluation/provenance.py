@@ -25,7 +25,9 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def freeze_metadata(mode: str, dataset: Path, context: Path) -> EvaluationMetadata:
+def freeze_metadata(
+    mode: str, dataset: Path, context: Path, *, split: str = "holdout"
+) -> EvaluationMetadata:
     protected = [str(ROOT / "backend" / name) for name in DETECTOR_FILES]
     protected.extend([str(dataset.resolve()), str(context.resolve())])
     # A reproducible freeze cannot silently include uncommitted detector/data edits.
@@ -38,6 +40,7 @@ def freeze_metadata(mode: str, dataset: Path, context: Path) -> EvaluationMetada
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     return EvaluationMetadata(
         mode=mode,
+        split=split,
         generated_at=datetime.now(UTC),
         git_commit=commit,
         dataset_sha256=sha256(dataset),

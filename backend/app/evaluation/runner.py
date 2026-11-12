@@ -11,6 +11,7 @@ from app.evaluation.contracts import (
 )
 from app.evaluation.metrics import (
     binary_metrics,
+    curve_metrics,
     hard_negative_metrics,
     latency_metrics,
     ratio,
@@ -40,12 +41,16 @@ def evaluate(
         raise ValueError("Evaluation thresholds must match the frozen policies")
     predictions = []
     for case in cases:
-        if case.split != "holdout":
+        if case.split.value != metadata.split:
             continue
         start = clock()
         # Only normalized email and context cross the detector boundary.
         det = detector(case.email, context)
         score, kind, error = det.score, det.bec_type, None
+        status = "COMPLETED"
+        if metadata.mode == "fallback":
+            status = "FALLBACK"
+            error = LLMErrorCode.NOT_CONFIGURED.value
         if metadata.mode == "hybrid":
             try:
                 semantic = analyzer_factory().assess(case.email, det, context)
@@ -54,11 +59,13 @@ def evaluate(
                 )
                 kind = resolve_bec_type(score, det, semantic)
             except ValidationError:
-                score = kind = None
+                score, kind = det.score, det.bec_type
                 error = LLMErrorCode.NOT_CONFIGURED.value
+                status = "FALLBACK"
             except SemanticAnalysisError as failure:
-                score = kind = None
+                score, kind = det.score, det.bec_type
                 error = failure.code.value
+                status = "FALLBACK"
         elapsed = max(0.0, (clock() - start) * 1000)
         # Annotation access occurs only after prediction (never input features).
         predictions.append(
@@ -72,23 +79,41 @@ def evaluate(
                 predicted_positive_alert=None if score is None else score >= ALERT_THRESHOLD,
                 score=score,
                 predicted_bec_type=kind,
-                status="ERROR" if error else "COMPLETED",
+                status=status,
                 error_code=error,
                 elapsed_ms=elapsed,
                 is_hard_negative=case.is_hard_negative,
             )
         )
     completed = sum(c.status == "COMPLETED" for c in predictions)
+    fallback = sum(c.status == "FALLBACK" for c in predictions)
+    errors = sum(c.status == "ERROR" for c in predictions)
+    scored_statuses = ("COMPLETED", "FALLBACK")
     return EvaluationResult(
         **metadata.model_dump(),
         cases_total=len(predictions),
         completed=completed,
-        errors=len(predictions) - completed,
-        coverage=ratio(completed, len(predictions)),
-        detection_metrics=binary_metrics(predictions),
-        alert_metrics=binary_metrics(predictions, alert=True),
+        fallback=fallback,
+        errors=errors,
+        coverage=ratio(completed + fallback, len(predictions)),
+        completed_coverage=ratio(completed, len(predictions)),
+        fallback_rate=ratio(fallback, len(predictions)),
+        error_rate=ratio(errors, len(predictions)),
+        detection_metrics=binary_metrics(predictions, statuses=scored_statuses),
+        alert_metrics=binary_metrics(predictions, alert=True, statuses=scored_statuses),
+        completed_detection_metrics=binary_metrics(predictions),
+        completed_alert_metrics=binary_metrics(predictions, alert=True),
+        fallback_detection_metrics=binary_metrics(predictions, statuses=("FALLBACK",)),
+        fallback_alert_metrics=binary_metrics(predictions, alert=True, statuses=("FALLBACK",)),
         hard_negatives=hard_negative_metrics(predictions),
         bec_types=type_metrics(predictions),
+        completed_bec_types=type_metrics(predictions, statuses=("COMPLETED",)),
+        fallback_bec_types=type_metrics(predictions, statuses=("FALLBACK",)),
         latency=latency_metrics(predictions),
+        completed_latency=latency_metrics(predictions, statuses=("COMPLETED",)),
+        fallback_latency=latency_metrics(predictions, statuses=("FALLBACK",)),
+        curves=curve_metrics(predictions, statuses=scored_statuses) if errors == 0 else None,
+        completed_curves=curve_metrics(predictions),
+        fallback_curves=curve_metrics(predictions, statuses=("FALLBACK",)),
         cases=predictions,
     )

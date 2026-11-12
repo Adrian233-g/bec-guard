@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
+from time import perf_counter
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -21,7 +22,8 @@ from app.services.deterministic_analysis import (
 )
 from app.services.hybrid_scoring import (
     HYBRID_POLICY_VERSION,
-    combine_scores,
+    build_fallback_breakdown,
+    build_score_breakdown,
     resolve_bec_type,
     risk_level,
 )
@@ -47,6 +49,7 @@ def analyze_email(
     analyzer_factory: Callable[[], SemanticAnalyzer] = create_semantic_analyzer,
     peer: str | None = None,
 ) -> EmailAnalysis:
+    started = perf_counter()
     try:
         # Lock the existing parent before checking the UNIQUE child. Two POSTs
         # cannot spend twice or insert duplicates. Unrelated emails do not block.
@@ -70,6 +73,7 @@ def analyze_email(
         analysis.deterministic_score = deterministic.score
         analysis.signals = [s.model_dump() for s in deterministic.signals]
         analysis.semantic_score = analysis.risk_score = analysis.risk_level = None
+        analysis.score_breakdown = None
         analysis.bec_type = analysis.summary = analysis.recommended_action = None
         analysis.provider = analysis.model = None
         analysis.error_code = None
@@ -89,12 +93,17 @@ def analyze_email(
         else:
             analysis.status = AnalysisStatus.COMPLETED
             analysis.semantic_score = semantic.risk_score
-            analysis.risk_score = combine_scores(
+            breakdown = build_score_breakdown(
                 deterministic.score,
                 semantic.risk_score,
                 signal_codes={signal.code for signal in deterministic.signals},
+                raw_deterministic_total=sum(
+                    signal.contribution for signal in deterministic.signals
+                ),
             )
+            analysis.risk_score = breakdown.final_score
             analysis.risk_level = risk_level(analysis.risk_score).value
+            analysis.score_breakdown = breakdown.model_dump(mode="json")
             kind = resolve_bec_type(analysis.risk_score, deterministic, semantic)
             analysis.bec_type = kind.value if kind else None
             analysis.signals += [Signal(**s.model_dump()).model_dump() for s in semantic.signals]
@@ -104,6 +113,12 @@ def analyze_email(
             analysis.status = AnalysisStatus.FALLBACK
             analysis.risk_score = deterministic.score
             analysis.risk_level = risk_level(deterministic.score).value
+            analysis.score_breakdown = build_fallback_breakdown(
+                deterministic.score,
+                raw_deterministic_total=sum(
+                    signal.contribution for signal in deterministic.signals
+                ),
+            ).model_dump(mode="json")
             analysis.bec_type = (
                 deterministic.bec_type.value
                 if deterministic.score >= 40 and deterministic.bec_type
@@ -129,6 +144,7 @@ def analyze_email(
             peer=peer,
         )
         ensure_alert_for_analysis(session, analysis, actor=actor, peer=peer)
+        analysis.duration_ms = round(max(0.0, (perf_counter() - started) * 1000), 3)
         session.commit()
         return analysis
     except SQLAlchemyError:

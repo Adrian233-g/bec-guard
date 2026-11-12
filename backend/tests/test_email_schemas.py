@@ -67,7 +67,11 @@ def test_invalid_message_ids(email_payload, value):
         ("cc_recipients", ["invalid"]),
         ("to_recipients", ["a@luminaria.example"] * (MAX_RECIPIENTS + 1)),
         ("subject", "s" * (MAX_SUBJECT_LENGTH + 1)),
-        ("body_text", "b" * (MAX_BODY_LENGTH + 1)),
+        pytest.param(
+            "body_text",
+            "b" * (MAX_BODY_LENGTH + 1),
+            id="body_text_oversized",
+        ),
         ("authentication_results", "a" * (MAX_AUTH_RESULTS_LENGTH + 1)),
         ("sender_name", "n" * 201),
         ("thread_id", "t" * 256),

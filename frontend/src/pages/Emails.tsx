@@ -235,7 +235,9 @@ function ManualAnalysis({ id }: { id: string }) {
   );
 }
 function AnalysisAlertLink({ analysis }: { analysis: Analysis }) {
-  const belowThreshold = (analysis.risk_score || 0) < ALERT_THRESHOLD;
+  const threshold =
+    analysis.score_breakdown?.alert_threshold ?? ALERT_THRESHOLD;
+  const belowThreshold = (analysis.risk_score || 0) < threshold;
   const resource = useResource<AlertSummary[]>(
     belowThreshold ? null : `/alerts?analysis_id=${analysis.id}&limit=1`,
   );

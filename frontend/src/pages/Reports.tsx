@@ -35,15 +35,25 @@ export function Reports() {
     <>
       <PageHeader
         title="Reporte operativo"
-        description="Exporta un resumen de actividad para gestión y auditoría."
+        description="Exporta actividad operativa de PostgreSQL para seguimiento y auditoría."
       />
       <section className="panel reports-panel">
         <h2>Periodo del reporte</h2>
         <p>
           Incluye correos recibidos, análisis y errores, distribución de riesgo,
           tipos BEC, estados y veredictos, y una lista de alertas. Sin fechas,
-          incluye todos los datos disponibles.
+          incluye todos los datos disponibles. No es una evaluación
+          independiente de calidad del detector.
         </p>
+        <div className="report-scope" role="note">
+          <strong>Cómo leer el periodo</strong>
+          <ul>
+            <li>Los correos se cuentan por fecha de recepción.</li>
+            <li>Los análisis se cuentan por fecha de análisis.</li>
+            <li>Las alertas se cuentan por fecha de creación.</li>
+            <li>Las fechas son inclusivas y se interpretan en UTC.</li>
+          </ul>
+        </div>
         <div className="filters report-dates">
           <label htmlFor="report-from">
             Fecha desde
@@ -67,9 +77,10 @@ export function Reports() {
           </label>
         </div>
         <p className="muted">
-          Fechas inclusivas en UTC. Los estados y decisiones reflejan su valor
-          actual. El reporte no incluye cuerpos de correo ni referencias
-          bancarias.
+          Las tablas muestran cantidad, denominador y porcentaje cuando aplica.
+          Una alerta sin veredicto humano aparece como “Sin decisión”; no se
+          presenta como BEC confirmado. El reporte no incluye cuerpos de correo,
+          referencias bancarias, prompts ni respuestas crudas del proveedor.
         </p>
         {invalid && (
           <p role="alert" className="error">

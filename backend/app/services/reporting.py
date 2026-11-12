@@ -19,6 +19,7 @@ class ReportAlert(BaseModel):
     risk_score: int
     risk_level: RiskLevel
     bec_type: BECType | None
+    analysis_mode: str
     status: AlertStatus
     verdict: AlertVerdict | None
     assigned_to_name: str | None
@@ -51,6 +52,7 @@ def gather_report(
             EmailAnalysis.risk_score,
             EmailAnalysis.risk_level,
             EmailAnalysis.bec_type,
+            EmailAnalysis.status.label("analysis_mode"),
             BECAlert.status,
             BECAlert.verdict,
             User.name.label("assigned_to_name"),

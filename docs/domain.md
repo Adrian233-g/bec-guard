@@ -17,7 +17,7 @@ Los identificadores son UUID y las fechas se intercambiarán como ISO 8601 con z
 | ExecutiveContact | Ejecutivo conocido persistente: UUID, name, position, department nullable, un email legítimo normalizado, is_active y timestamps. Su dominio se podrá derivar del email. |
 | Vendor | Proveedor conocido persistente: UUID, name, un domain principal canónico, contact_email y bank_account_reference opcionales, is_active y timestamps. Referencia bancaria opaca, nunca auditada. |
 | Email | Correo persistente normalizado: UUID, Message-ID único, thread_id opcional, remitente, Reply-To, Return-Path, destinatarios JSONB, asunto, body_text, Authentication-Results, received_at e ingested_at. Sin análisis ni labels de evaluación. |
-| EmailAnalysis | Análisis actual de un Email, máximo uno por UNIQUE email_id: status COMPLETED/ERROR, scores, riesgo/tipo nullable, señales JSONB, resumen/recomendación, proveedor/modelo, versión, error_code y fecha. Sin raw output ni prompt. |
+| EmailAnalysis | Análisis actual de un Email, máximo uno por UNIQUE email_id: status COMPLETED/FALLBACK/ERROR, scores, riesgo/tipo nullable, señales JSONB, resumen/recomendación, proveedor/modelo, versión, error_code, fecha y duración. Sin raw output ni prompt. |
 | BECAlert | Alerta persistente, máximo una por análisis: UUID, analysis_id UNIQUE/FK RESTRICT, status OPEN inicial, verdict null, assigned_to FK RESTRICT nullable, resolution nullable, created_at/updated_at y closed_at nullable. alert-v2 crea para COMPLETED o FALLBACK >=50; Fase 7 implementa claim/release/resolve humanos. |
 | Notification | Aviso in-app para un destinatario y una alerta: UUID, user_id FK RESTRICT, alert_id FK CASCADE, kind BEC_ALERT, read_at nullable y created_at. UNIQUE (user_id, alert_id, kind) evita duplicados; no guarda contenido del correo. |
 | AuditLog | Registro persistente append-only con UUID, actor nullable, snapshot de rol, acción, recurso nullable, IP nullable, details JSONB mínimos y fecha. Un trigger impide UPDATE/DELETE. Audita auth, cambios de contexto e ingestión sin contenido del email. Nunca copia passwords, hashes, JWT, referencias bancarias ni cuerpos de correo. |
@@ -76,8 +76,9 @@ de evaluación en el modelo. Fase 6 añade alertas sin cambiar scoring ni datase
 `public.email_analysis` referencia emails con FK RESTRICT y UNIQUE email_id.
 Guarda UUID, status, deterministic_score, semantic_score/risk_score/risk_level/
 bec_type nullable, signals JSONB, summary/recommended_action nullable, provider/
-model nullable, policy_version, error_code nullable y analyzed_at UTC. La revisión
-0006 añade únicamente esta tabla; no cambia 0001–0005 ni n8n.
+model nullable, policy_version, error_code nullable, analyzed_at UTC y duration_ms
+nullable para históricos. La revisión 0017 añade la duración sin almacenar contenido
+privado.
 
 COMPLETED requiere scores semántico/final, nivel, resumen y recomendación.
 ERROR conserva señales locales y deterministic_score, pero nunca tiene score

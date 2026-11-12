@@ -123,11 +123,11 @@ ERROR es persistido/reintentable con riesgo null. Análisis y evento comparten u
 commit. No cambia el estilo síncrono ni incorpora servicios adicionales.
 Políticas y límites: [análisis BEC](bec-analysis.md).
 
-Fase 6 integra alert-v1 (COMPLETED >=70) y BECAlert en el mismo commit del pipeline.
+Fase 6 integra alert-v2 (COMPLETED o FALLBACK >=50) y BECAlert en el mismo commit del pipeline.
 La API humana conserva JWT/RBAC; dos POST de automatización usan una key lazy sin
 crear usuarios ficticios. n8n importa una credencial Header Auth y URL desde entorno
-sin habilitar `$env` en nodos. No se conserva historial de ejecuciones con correos;
-los registros temporales se marcan y eliminan mediante pruning periódico.
+sin habilitar `$env` en nodos. El historial de ejecuciones puede contener datos del
+correo y queda protegido por los permisos de n8n y el pruning periódico configurado.
 [Diseño y contratos](alerts-and-orchestration.md) · [operación n8n](../n8n/README.md).
 
 ## Flujo de correo real (futuro)
