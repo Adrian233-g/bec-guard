@@ -1,0 +1,50 @@
+# Tema del laboratorio; Streamlit lo carga al iniciarse desde backend/.
+[theme]
+font = "sans-serif"
+headingFont = "sans-serif"
+baseRadius = "0.75rem"
+buttonRadius = "0.55rem"
+baseFontSize = 15
+metricValueFontSize = "2rem"
+paddingTop = "1.25rem"
+paddingBottom = "2rem"
+
+[theme.light]
+primaryColor = "#086F75"
+backgroundColor = "#F7FAFC"
+secondaryBackgroundColor = "#EEF4F7"
+textColor = "#172B3C"
+borderColor = "#D5E1E8"
+linkColor = "#086F75"
+chartCategoricalColors = ["#086F75", "#3E81B0", "#D18B45", "#69789A", "#739A76"]
+
+[theme.light.sidebar]
+backgroundColor = "#142C40"
+secondaryBackgroundColor = "#203B51"
+textColor = "#F2F7FA"
+borderColor = "#34516A"
+codeBackgroundColor = "#203B51"
+codeTextColor = "#F2F7FA"
+primaryColor = "#086F75"
+linkColor = "#93E2DB"
+paddingTop = "1rem"
+
+[theme.dark]
+primaryColor = "#086F75"
+backgroundColor = "#0D1928"
+secondaryBackgroundColor = "#182A3B"
+textColor = "#E9F1F5"
+borderColor = "#2F4658"
+linkColor = "#81D9D1"
+chartCategoricalColors = ["#62C7BD", "#77ABDA", "#E0AA68", "#AA9BCB", "#8DB991"]
+
+[theme.dark.sidebar]
+backgroundColor = "#101F30"
+secondaryBackgroundColor = "#1B3044"
+textColor = "#EEF5F8"
+borderColor = "#304B60"
+codeBackgroundColor = "#1B3044"
+codeTextColor = "#EEF5F8"
+primaryColor = "#086F75"
+linkColor = "#91DED7"
+paddingTop = "1rem"

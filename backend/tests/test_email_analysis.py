@@ -27,6 +27,7 @@ from app.services.email_analysis import analyze_email, create_semantic_analyzer
 from app.services.email_ingestion import ingest_email
 from app.services.operational_summary import operational_summary
 from app.services.semantic_analysis import LLMErrorCode, SemanticAnalysisError
+from app.services.trained_model import ModelPrediction
 
 pytestmark = pytest.mark.integration
 
@@ -162,6 +163,121 @@ def test_rules_fallback_is_audited_alerted_and_idempotent(
         "EMAIL_ANALYZED",
         "BEC_ALERT_CREATED",
     }
+
+
+@pytest.mark.parametrize("mode", ["shadow", "assist"])
+def test_local_classifier_is_recorded_and_can_raise_fallback_alert(
+    api_client, analysis_setup, db_session, mode
+):
+    email, fake, headers = analysis_setup
+    stored = db_session.get(Email, email.id)
+    stored.sender_name, stored.sender_email = "Persona", "person@other.example"
+    stored.reply_to = stored.return_path = stored.authentication_results = None
+    stored.subject, stored.body_text = "Reunión", "Reunión mañana."
+    db_session.commit()
+    fake.failure = LLMErrorCode.TIMEOUT
+    prediction = ModelPrediction(mode, 0.95, 50, "a" * 64)
+    analysis = analyze_email(
+        db_session,
+        email.id,
+        actor=None,
+        analyzer_factory=lambda: fake,
+        model_predictor=lambda _email: prediction,
+    )
+    result = api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json()
+    assert result["score_breakdown"]["model_mode"] == mode
+    assert result["score_breakdown"]["model_sha256"] == "a" * 64
+    assert result["score_breakdown"]["model_probability"] == 0.95
+    assert result["deterministic_score"] == 0
+    assert result["risk_score"] == (50 if mode == "assist" else 0)
+    assert result["score_breakdown"]["alert_triggered"] == (mode == "assist")
+    assert result["bec_type"] == ("OTHER" if mode == "assist" else None)
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == int(mode == "assist")
+    assert analysis.policy_version.endswith(f"ml-{mode}-v1")
+    assert api_client.post(f"/api/emails/{email.id}/analyze", headers=headers).json() == result
+
+
+def test_local_classifier_can_raise_completed_score_without_overwriting_semantic_score(
+    api_client, analysis_setup, db_session
+):
+    email, fake, headers = analysis_setup
+    stored = db_session.get(Email, email.id)
+    stored.sender_name, stored.sender_email = "Persona", "person@other.example"
+    stored.reply_to = stored.return_path = stored.authentication_results = None
+    stored.subject, stored.body_text = "Reunión", "Reunión mañana."
+    db_session.commit()
+    fake.score = 0
+    prediction = ModelPrediction("assist", 0.9, 50, "a" * 64)
+    analyze_email(
+        db_session,
+        email.id,
+        actor=None,
+        analyzer_factory=lambda: fake,
+        model_predictor=lambda _email: prediction,
+    )
+    result = api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json()
+    assert result["status"] == "COMPLETED"
+    assert result["deterministic_score"] == 0 and result["semantic_score"] == 0
+    assert result["risk_score"] == result["score_breakdown"]["final_score"] == 50
+    assert result["score_breakdown"]["weighted_score"] == 0
+    assert result["score_breakdown"]["model_score"] == 50
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
+
+
+def test_pinned_local_model_runs_through_http_persistence_and_alerts(
+    api_client, analysis_setup, db_session, tmp_path, monkeypatch
+):
+    import hashlib
+    import json
+
+    import joblib
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+
+    email, fake, headers = analysis_setup
+    stored = db_session.get(Email, email.id)
+    stored.sender_name, stored.sender_email = "Persona", "person@other.example"
+    stored.reply_to = stored.return_path = stored.authentication_results = None
+    stored.subject, stored.body_text = "Pago urgente", "transferencia bancaria"
+    db_session.commit()
+    fake.failure = LLMErrorCode.TIMEOUT
+    model = make_pipeline(TfidfVectorizer(), LogisticRegression())
+    model.fit(
+        ["Pago urgente transferencia", "Cambia cuenta bancaria", "Inventario", "Reunión"],
+        [1, 1, 0, 0],
+    )
+    path = tmp_path / "model.joblib"
+    joblib.dump(model, path)
+    model_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+    report = tmp_path / "training_report.json"
+    report.write_text(
+        json.dumps(
+            {
+                "status": "AUTHORIZED_TRAINING_VALIDATION",
+                "test_status": "AUTHORIZED_TEST_EVALUATED",
+                "test": {"tp": 20, "fn": 0, "fp": 2, "tn": 98},
+                "selected": {"threshold": 0.5},
+                "model_sha256": model_sha256,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BEC_MODEL_MODE", "assist")
+    monkeypatch.setenv("BEC_MODEL_PATH", str(path))
+    monkeypatch.setenv("BEC_MODEL_SHA256", model_sha256)
+    monkeypatch.setenv("BEC_MODEL_REPORT_PATH", str(report))
+    monkeypatch.setenv("BEC_MODEL_REPORT_SHA256", hashlib.sha256(report.read_bytes()).hexdigest())
+
+    response = api_client.post(f"/api/emails/{email.id}/analyze", headers=headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["status"] == "FALLBACK" and result["risk_score"] >= 50
+    assert result["score_breakdown"]["model_mode"] == "assist"
+    assert result["score_breakdown"]["model_score"] == 50
+    assert result["score_breakdown"]["model_probability"] >= 0.5
+    assert db_session.scalar(select(func.count()).select_from(BECAlert)) == 1
+    assert api_client.get(f"/api/emails/{email.id}/analysis", headers=headers).json() == result
 
 
 def test_low_rules_fallback_does_not_assert_safe_or_create_alert(

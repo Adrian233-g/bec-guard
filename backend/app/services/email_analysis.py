@@ -6,7 +6,6 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import LLMSettings
@@ -33,6 +32,7 @@ from app.services.semantic_analysis import (
     SemanticAnalysisError,
     SemanticAnalyzer,
 )
+from app.services.trained_model import ModelPrediction, assisted_score, predict_email
 
 POLICY_VERSION = f"{DETERMINISTIC_POLICY_VERSION}/{SEMANTIC_PROMPT_VERSION}/{HYBRID_POLICY_VERSION}"
 
@@ -47,6 +47,7 @@ def analyze_email(
     *,
     actor: User | None,
     analyzer_factory: Callable[[], SemanticAnalyzer] = create_semantic_analyzer,
+    model_predictor: Callable[[Email], ModelPrediction | None] = predict_email,
     peer: str | None = None,
 ) -> EmailAnalysis:
     started = perf_counter()
@@ -66,6 +67,7 @@ def analyze_email(
             return analysis
         context = load_analysis_context(session)
         deterministic = assess_deterministically(email, context)
+        model_prediction = model_predictor(email)
         if analysis is None:
             analysis = EmailAnalysis(email_id=email_id)
             session.add(analysis)
@@ -101,24 +103,36 @@ def analyze_email(
                     signal.contribution for signal in deterministic.signals
                 ),
             )
-            analysis.risk_score = breakdown.final_score
-            analysis.risk_level = risk_level(analysis.risk_score).value
+            original_score = breakdown.final_score
+            final_score = assisted_score(original_score, model_prediction)
+            if model_prediction is not None:
+                breakdown.final_score = final_score
+                breakdown.alert_triggered = final_score >= breakdown.alert_threshold
+                breakdown.model_mode = model_prediction.mode
+                breakdown.model_probability = model_prediction.probability
+                breakdown.model_score = model_prediction.score
+                breakdown.model_sha256 = model_prediction.sha256
+            analysis.risk_score = final_score
+            analysis.risk_level = risk_level(final_score).value
             analysis.score_breakdown = breakdown.model_dump(mode="json")
-            kind = resolve_bec_type(analysis.risk_score, deterministic, semantic)
-            analysis.bec_type = kind.value if kind else None
+            kind = (
+                resolve_bec_type(original_score, deterministic, semantic)
+                if original_score >= 40
+                else None
+            )
+            analysis.bec_type = kind.value if kind else ("OTHER" if final_score >= 40 else None)
             analysis.signals += [Signal(**s.model_dump()).model_dump() for s in semantic.signals]
             analysis.summary = semantic.summary
             analysis.recommended_action = semantic.recommended_action
         if analysis.error_code is not None:
             analysis.status = AnalysisStatus.FALLBACK
-            analysis.risk_score = deterministic.score
-            analysis.risk_level = risk_level(deterministic.score).value
-            analysis.score_breakdown = build_fallback_breakdown(
+            final_score = assisted_score(deterministic.score, model_prediction)
+            breakdown = build_fallback_breakdown(
                 deterministic.score,
                 raw_deterministic_total=sum(
                     signal.contribution for signal in deterministic.signals
                 ),
-            ).model_dump(mode="json")
+            )
             analysis.bec_type = (
                 deterministic.bec_type.value
                 if deterministic.score >= 40 and deterministic.bec_type
@@ -132,6 +146,28 @@ def analyze_email(
                 "Un puntaje bajo no descarta fraude."
             )
             analysis.policy_version = f"{DETERMINISTIC_POLICY_VERSION}/fallback-v1"
+            if model_prediction is not None:
+                if model_prediction.mode == "assist":
+                    if final_score >= 40 and analysis.bec_type is None:
+                        analysis.bec_type = "OTHER"
+                    analysis.summary = (
+                        "Evaluación mediante reglas y clasificador local; IA no disponible."
+                    )
+                    analysis.recommended_action = (
+                        "Verificar solicitudes sensibles por un canal conocido; "
+                        "el clasificador puede producir falsos positivos."
+                    )
+                breakdown.final_score = final_score
+                breakdown.alert_triggered = final_score >= breakdown.alert_threshold
+                breakdown.model_mode = model_prediction.mode
+                breakdown.model_probability = model_prediction.probability
+                breakdown.model_score = model_prediction.score
+                breakdown.model_sha256 = model_prediction.sha256
+            analysis.risk_score = final_score
+            analysis.risk_level = risk_level(final_score).value
+            analysis.score_breakdown = breakdown.model_dump(mode="json")
+        if model_prediction is not None:
+            analysis.policy_version += f"/ml-{model_prediction.mode}-v1"
         analysis.analyzed_at = datetime.now(UTC)
         session.flush()
         record_analysis_event(
@@ -147,6 +183,6 @@ def analyze_email(
         analysis.duration_ms = round(max(0.0, (perf_counter() - started) * 1000), 3)
         session.commit()
         return analysis
-    except SQLAlchemyError:
+    except Exception:
         session.rollback()
         raise

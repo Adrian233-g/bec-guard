@@ -37,6 +37,11 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      BEC_MODEL_MODE: ${BEC_MODEL_MODE:-disabled}
+      BEC_MODEL_PATH: ${BEC_MODEL_PATH:-/opt/bec-guard-model/model.joblib}
+      BEC_MODEL_SHA256: ${BEC_MODEL_SHA256:-}
+      BEC_MODEL_REPORT_PATH: ${BEC_MODEL_REPORT_PATH:-/opt/bec-guard-model/training_report.json}
+      BEC_MODEL_REPORT_SHA256: ${BEC_MODEL_REPORT_SHA256:-}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
@@ -44,6 +49,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - ./n8n:/opt/bec-guard-n8n:ro
+      - ${BEC_MODEL_HOST_DIR:-./artifacts/research/training_v1/model}:/opt/bec-guard-model:ro
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:

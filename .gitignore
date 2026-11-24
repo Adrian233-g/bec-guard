@@ -40,3 +40,7 @@ skills-lock.json
 
 # Controlled academic evaluation outputs (includes per-case holdout predictions)
 artifacts/evaluation/
+artifacts/research/
+
+# Temporary Microsoft Word owner/lock files
+~$*.docx

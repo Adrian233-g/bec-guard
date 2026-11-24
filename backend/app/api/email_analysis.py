@@ -12,6 +12,7 @@ from app.models.enums import AnalysisStatus
 from app.schemas.analysis import EmailAnalysisResponse
 from app.services.email_analysis import analyze_email, create_semantic_analyzer
 from app.services.semantic_analysis import LLMErrorCode, SemanticAnalyzer
+from app.services.trained_model import ModelPrediction, predict_email
 
 router = APIRouter(prefix="/api/emails", tags=["BEC analysis"])
 AnyUser = Annotated[User, Depends(require_roles(Role.ADMIN, Role.ANALYST, Role.EMPLOYEE))]
@@ -21,6 +22,10 @@ def get_analyzer_factory() -> Callable[[], SemanticAnalyzer]:
     # Return a factory: invalid/missing settings become a persisted ERROR, and a
     # completed analysis or missing email never needs provider configuration.
     return create_semantic_analyzer
+
+
+def get_model_predictor() -> Callable[[Email], ModelPrediction | None]:
+    return predict_email
 
 
 def analysis_error_status(error_code: str | None) -> int:
@@ -83,6 +88,9 @@ def post_analysis(
     request: Request,
     response: Response,
     analyzer_factory: Annotated[Callable[[], SemanticAnalyzer], Depends(get_analyzer_factory)],
+    model_predictor: Annotated[
+        Callable[[Email], ModelPrediction | None], Depends(get_model_predictor)
+    ],
 ):
     _check_email_access(session, email_id, actor)
     analysis = analyze_email(
@@ -90,6 +98,7 @@ def post_analysis(
         email_id,
         actor=actor,
         analyzer_factory=analyzer_factory,
+        model_predictor=model_predictor,
         peer=request.client.host if request.client else None,
     )
     if analysis.status == AnalysisStatus.ERROR:

@@ -130,8 +130,14 @@ locales están en [política BEC](bec-analysis.md#scoring-híbrido-hybrid-v2).
 ## Fallo semántico
 
 Cuando el proveedor falla, responde HTTP 200 con status FALLBACK, error_code
-sanitizado, semantic_score null y risk_score igual al puntaje de reglas. Se conserva
-la política `det-v3/fallback-v1`. Se crea alerta si el puntaje alcanza 50. Un
+sanitizado y semantic_score null; por defecto risk_score coincide con las reglas.
+Con un clasificador local en `shadow` se registra su resultado sin alterar el score.
+Solo un modelo con test autorizado que cumpla la puerta técnica puede ejecutarse
+en `assist` y elevar el score a 50. Los modelos de fixture o diagnóstico público
+son rechazados en `assist` antes de deserializarse. Si falta o cambia el hash del
+modelo **o del informe que fija el umbral**, la solicitud falla sin persistir un
+análisis nuevo ni generar alerta. Se conserva
+la política `det-v3/fallback-v1` (con sufijo del modo ML si aplica). Se crea alerta si el puntaje alcanza 50. Un
 puntaje bajo no descarta fraude: el análisis semántico no se realizó. No hay
 reintentos automáticos ni reanálisis de FALLBACK; repetir POST devuelve el mismo
 resultado. ERROR históricos aún se pueden reintentar con el mismo UUID.
@@ -145,7 +151,7 @@ detalles internos del proveedor.
 proveedor semántico. No representan razonamiento interno verificable y no sustituyen
 la tabla de señales ni la revisión humana. En FALLBACK no existe `semantic_score` ni
 explicación semántica; `score_breakdown.mode` es `FALLBACK` y el resultado final es
-el score determinista.
+el score determinista, salvo una elevación por un modelo autorizado en `assist`.
 
 ## GET /api/emails/{email_id}/analysis
 

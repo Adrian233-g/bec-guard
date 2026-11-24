@@ -50,6 +50,18 @@ class LLMSettings(BaseSettings):
     groq_api_key: SecretStr = SecretStr("")
 
 
+class TrainedModelSettings(BaseSettings):
+    """Local, explicitly pinned inference artifact; never fetched from a request."""
+
+    model_config = SettingsConfigDict(env_file=ROOT_ENV, extra="ignore", hide_input_in_errors=True)
+
+    bec_model_mode: Literal["disabled", "shadow", "assist"] = "disabled"
+    bec_model_path: Path | None = None
+    bec_model_sha256: str = Field(default="", pattern=r"^$|^[0-9a-f]{64}$")
+    bec_model_report_path: Path | None = None
+    bec_model_report_sha256: str = Field(default="", pattern=r"^$|^[0-9a-f]{64}$")
+
+
 class AutomationSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ROOT_ENV, extra="ignore", hide_input_in_errors=True)
 

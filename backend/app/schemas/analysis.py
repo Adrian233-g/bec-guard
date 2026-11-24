@@ -74,6 +74,10 @@ class ScoreBreakdown(BaseModel):
     final_score: Score
     alert_threshold: Score
     alert_triggered: bool
+    model_mode: Literal["shadow", "assist"] | None = None
+    model_probability: float | None = Field(default=None, ge=0, le=1)
+    model_score: Score | None = None
+    model_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
 
 class EmailAnalysisResponse(BaseModel):
